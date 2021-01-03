@@ -1,0 +1,40 @@
+ACK 1: inviare pacchetto e aspettare ACK dell'altro, altrimenti riinviare il pacchetto
+ACK 2: inviare pacchetto e controllare che l'altro non riinvii niente
+
+select per monitorare arrivo informazioni
+se informazioni dal socket {
+    ricevo e leggo pacchetto UDP
+    se richiesta di connessione {
+        se primo peer {
+            lo aggiungo al file di peer connessi
+            gli invio una lista vuota
+            aspetto ACK 2
+        }
+        altrimenti {
+            cerco i vicini
+            compongo la lista da inviare
+            la invio
+            aspetto ACK 2
+            cerco peer a cui e' cambiata lista di prossimita'
+            per ogni vicino {
+                compongo lista di prossimita'
+                la invio
+                aspetto ACK 1
+            }
+        }
+        aggiorno numero peer connessi
+    }
+    se richiesta di uscita {
+        se ultimo peer
+            cancello file peer connessi
+        altrimenti {
+            elimino peer dalla lista
+            cerco peer a cui e' cambiata lista di prossimita'
+            per ogni vicino {
+                compongo lista di prossimita'
+                la invio
+                aspetto ACK 1
+            }
+        }
+    }
+}
