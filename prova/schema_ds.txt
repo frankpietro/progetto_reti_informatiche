@@ -1,6 +1,8 @@
 ACK 1: inviare pacchetto e aspettare ACK dell'altro, altrimenti riinviare il pacchetto
 ACK 2: inviare pacchetto e controllare che l'altro non riinvii niente
 
+SCHEMA DISCOVERY SERVER
+
 select per monitorare arrivo informazioni
 se informazioni dal socket {
     ricevo e leggo pacchetto UDP
