@@ -41,6 +41,21 @@ se informazioni dal socket {
     }
 
     se informazioni da stdin {
-        
+        se help
+            stampa i comandi
+        se showpeers
+            stampa i peer
+        se showneighbor {
+            -- ancora da scrivere
+        }
+        se esc {
+            per ogni peer {
+                invia un messaggio di uscita
+                attende ACK 1
+            }
+            cancella file di peer
+            chiude il socket
+            esce
+        }
     }
 }

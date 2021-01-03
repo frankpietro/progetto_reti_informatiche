@@ -741,10 +741,11 @@ int main(int argc, char** argv){
                     
                     //Aggiorno il numero di peer connessi (dovrebbe essere 0)
                     connected_peers -= removed;
-                    //Cancello il file con la lista di peer
-                    remove("peer_addr.txt");
 
                 }
+                
+                //Cancello il file con la lista di peer
+                remove("peer_addr.txt");
 
                 close(server_socket);
                 _exit(0);
