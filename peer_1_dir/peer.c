@@ -118,6 +118,7 @@ int main(int argc, char** argv){
                     //Invio boot message
                     do {
                         ret = sendto(listener_socket, conn_req_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&server_addr, addrlen);
+                        printf("Invio richiesta di connessione\n");
                     } while(ret<0);
                     
                     //Mi preparo a ricevere un messaggio dal server
@@ -126,10 +127,14 @@ int main(int argc, char** argv){
                     //Imposto il timeout a 1 secondo
                     util_tv.tv_sec = 1;
                     util_tv.tv_usec = 0;
+
+                    printf("Sto aspettando la lista\n");
                     //Aspetto la lista
-                    ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
+                    ret = select(listener_socket+1, &readset, NULL, NULL, &util_tv);
+                    printf("Sono uscito dalla select\n");
                     //Appena la ricevo
                     if(FD_ISSET(listener_socket, &readset)){
+                        printf("Ricevuta lista di peer\n");
                         //Ricevo lista di peer
                         ret = recvfrom(listener_socket, recv_buffer, LIST_MAX_LEN, 0, (struct sockaddr*)&server_addr, &addrlen);
                         

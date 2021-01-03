@@ -13,6 +13,7 @@
 #define MESS_TYPE_LEN 8
 #define LIST_MAX_LEN 21
 
+//Elenco dei comandi disponibili
 void comandi(){
     printf("Elenco dei comandi disponibili:\n");
     printf("help --> mostra elenco comando e significato\n");
@@ -228,7 +229,7 @@ int main(int argc, char** argv){
                             ret = sendto(server_socket, list_buffer_h, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&network_peer, peer_addr_len);
                         } while(ret<0);
                         
-                        printf("Lista vuota inviata\n");
+                        printf("Lista vuota inviata a %d\n", peer_port);
 
                         //Attesa di un secondo
                         util_tv.tv_sec = 1;
@@ -236,36 +237,33 @@ int main(int argc, char** argv){
                         //Mi metto per un secondo solo in ascolto sul socket
                         //Solo in ascolto di un'eventuale copia del messaggio di boot
 
-                        //INDECISIONE
-                        while(util_tv.tv_sec != 0 || util_tv.tv_usec != 0){
-                            FD_ZERO(&readset);
-                            FD_SET(server_socket, &readset);
+                        FD_ZERO(&readset);
+                        FD_SET(server_socket, &readset);
 
-                            ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
+                        ret = select(server_socket+1, &readset, NULL, NULL, &util_tv);
 
-                            //Se arriva qualcosa
-                            if(FD_ISSET(server_socket, &readset)){
-                                //Leggo cosa ho ricevuto
-                                ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
-                                //Se ho ricevuto lo stesso identico messaggio
-                                if(util_addr.sin_port == network_peer.sin_port && util_addr.sin_addr.s_addr == network_peer.sin_addr.s_addr && (strcmp(recv_buffer, "CONN_REQ")==0)){
-                                    //Riinvio la lista al peer tornando a inizio while(!received)
-                                    printf("Invio di nuovo la lista al peer\n");
-                                    received = 0;
-                                    break;
-                                }
-                                //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera')
-                                else {
-                                    printf("E' arrivato un messaggio che ho scartato\n");
-                                    received = 1;
-                                }
-
-                                FD_CLR(server_socket, &readset);
+                        //Se arriva qualcosa
+                        if(FD_ISSET(server_socket, &readset)){
+                            //Leggo cosa ho ricevuto
+                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
+                            //Se ho ricevuto lo stesso identico messaggio
+                            if(util_addr.sin_port == network_peer.sin_port && util_addr.sin_addr.s_addr == network_peer.sin_addr.s_addr && (strcmp(recv_buffer, "CONN_REQ")==0)){
+                                //Riinvio la lista al peer tornando a inizio while(!received)
+                                printf("Invio di nuovo la lista al peer\n");
+                                received = 0;
+                                break;
                             }
-                            //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
-                            else
+                            //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera')
+                            else {
+                                printf("E' arrivato un messaggio che ho scartato\n");
                                 received = 1;
+                            }
+
+                            FD_CLR(server_socket, &readset);
                         }
+                        //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
+                        else
+                            received = 1;
 
                     }
 
@@ -645,7 +643,7 @@ int main(int argc, char** argv){
         if(FD_ISSET(0, &readset)) {
             scanf("%s", command_buffer);
             if(strcmp(command_buffer,"help\0")==0){
-                printf("Hai digitato comando help\n");
+                comandi();
             }
 
             else if(strcmp(command_buffer,"showpeers\0")==0){
@@ -743,7 +741,7 @@ int main(int argc, char** argv){
                     connected_peers -= removed;
 
                 }
-                
+
                 //Cancello il file con la lista di peer
                 remove("peer_addr.txt");
 
