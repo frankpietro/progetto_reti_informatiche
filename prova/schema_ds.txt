@@ -37,4 +37,8 @@ se informazioni dal socket {
             }
         }
     }
+
+    se informazioni da stdin {
+        
+    }
 }
