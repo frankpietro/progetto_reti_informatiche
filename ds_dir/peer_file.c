@@ -9,7 +9,19 @@
 #include <unistd.h>
 #include <time.h>
 
-void get_neighbors(int peer, int *nbr_1, int *nbr_2){
+int get_port(int pos){
+    FILE *fp;
+    int port;
+    char temp[INET_ADDRSTRLEN];
+
+    fp = fopen("peer_addr.txt", "r");
+    while(pos-- >= 0)
+        fscanf(fp, "%s %d", temp, &port);
+    
+    return port;
+}
+
+void get_neighbors(int peer, int conn, int *nbr_1, int *nbr_2){
     FILE *fd;
     int m,f,serv;
     char temp_buff[INET_ADDRSTRLEN];
@@ -19,6 +31,17 @@ void get_neighbors(int peer, int *nbr_1, int *nbr_2){
 
     (*nbr_1) = -1;
     (*nbr_2) = -1;
+
+    //Se un solo peer connesso
+    if(conn == 1)
+        return;
+    
+    //Se ce ne sono due
+    if(conn == 2){
+        (*nbr_1) = (get_port(0) == peer) ? get_port(1) : get_port(0);
+        return;
+    }
+
     //Prelevo i primi valori
     m = fscanf(fd, "%s %d", temp_buff, &serv);
     //Salvo il primo numero
@@ -53,16 +76,100 @@ void get_neighbors(int peer, int *nbr_1, int *nbr_2){
     }
 }
 
-int get_port(int pos){
-    FILE *fp;
-    int port;
-    char temp[INET_ADDRSTRLEN];
+int insert_peer(char* addr, int port, int connected){
+    FILE *fp, *temp;
+    int m, f, serv;
+    int temp_port[2];
+    char temp_buff[INET_ADDRSTRLEN];
 
-    fp = fopen("peer_addr.txt", "r");
-    while(pos-- >= 0)
-        fscanf(fp, "%s %d", temp, &port);
-    
-    return port;
+    //Se primo peer a connettersi
+    if(connected == 0){
+        fp = fopen("peer_addr.txt", "w");
+        fprintf(fp, "%s %d\n", addr, port);
+        fclose(fp);
+        return 1;
+    }
+
+    //Inserisco ordinatamente nel caso di un peer gia' presente
+    if(connected == 1){
+        //Non la uso
+        temp_port[1] = -1;
+        fp = fopen("peer_addr.txt", "r");
+        temp = fopen("temp.txt", "w");
+
+        fscanf(fp, "%s %d", temp_buff, &temp_port[0]);
+        if(temp_port[0] < port){
+            fprintf(temp, "%s %d\n", temp_buff, temp_port[0]);
+            fprintf(temp, "%s %d\n", addr, port);
+        }
+        else {
+            fprintf(temp, "%s %d\n", addr, port);
+            fprintf(temp, "%s %d\n", temp_buff, temp_port[0]);
+        }
+        fclose(temp);
+        fclose(fp);
+        remove("peer_addr.txt");
+        rename("temp.txt", "peer_addr.txt");
+
+        return 1;
+    }
+
+    //Inserisco ordinatamente nel caso di due o piu' peer gia' presenti
+    else {
+        fp = fopen("peer_addr.txt", "r");
+        temp = fopen("temp.txt", "w");
+
+        temp_port[0] = -1;
+        //Prelevo i primi valori
+        m = fscanf(fp, "%s %d", temp_buff, &serv);
+        //Salvo il primo numero
+        f = serv;
+        //Finche' trovo valori e non arrivo alla fine...
+        while(serv < port && m == 2){
+            //Salvo il precedente
+            temp_port[0] = serv;
+            //Lo stampo
+            fprintf(temp, "%s %d\n", temp_buff, serv);
+            //Provo a prenderne un altro
+            m = fscanf(fp, "%s %d", temp_buff, &serv);
+            //Lo metto come successivo
+            temp_port[1] = serv;
+        }
+
+        //Quando esco dal while inserisco il valore
+        fprintf(temp, "%s %d\n", temp_buff, port);
+
+        //Se non sono mai entrato nel while oppure sono arrivato in fondo
+        //ovvero il mio valore e' il minimo o il massimo
+        if(serv == f || m != 2)
+            //Il peer successivo e' il primo che ho estratto
+            temp_port[1] = f;
+        
+        //Se non ero arrivato in fondo al file
+        if(m == 2)
+            //Stampo il valore successivo a quello che dovevo inserire
+            fprintf(temp, "%s %d\n", temp_buff, serv);
+
+        //Inserisco gli altri finche' non finiscono
+        while(fscanf(fp, "%s %d", temp_buff, &serv) == 2)
+            fprintf(temp, "%s %d\n", temp_buff, serv);
+
+        //Se non ero mai entrato nel while
+        if(temp_port[0] == -1)
+            //Il mio peer precedente e' il massimo, perche' io sono il minimo
+            temp_port[0] = serv;   
+        
+        //Fine
+        fclose(temp);
+        fclose(fp);
+        remove("peer_addr.txt");
+        rename("temp.txt", "peer_addr.txt");
+
+        return 2;
+    }
+
+    //Questa riga non dovrebbe mai essere eseguita
+    return 0;
 }
 
 int isIn(int port){

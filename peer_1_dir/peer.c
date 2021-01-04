@@ -131,13 +131,13 @@ int main(int argc, char** argv){
                     printf("Sto aspettando la lista\n");
                     //Aspetto la lista
                     ret = select(listener_socket+1, &readset, NULL, NULL, &util_tv);
-                    printf("Sono uscito dalla select\n");
                     //Appena la ricevo
                     if(FD_ISSET(listener_socket, &readset)){
-                        printf("Ricevuta lista di peer\n");
                         //Ricevo lista di peer
                         ret = recvfrom(listener_socket, recv_buffer, LIST_MAX_LEN, 0, (struct sockaddr*)&server_addr, &addrlen);
                         
+                        printf("Ricevuta lista di peer %s\n", recv_buffer);
+
                         sscanf_ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
                         
                         //Se ho ricevuto effettivamente la lista

@@ -14,6 +14,7 @@
 #define MAX_COMMAND 30
 #define MESS_TYPE_LEN 8
 #define LIST_MAX_LEN 21
+#define LOCALHOST "127.0.0.1"
 
 //Elenco dei comandi disponibili
 void comandi(){
@@ -41,7 +42,6 @@ int main(int argc, char** argv){
     socklen_t peer_addr_len;
 
     char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
-    FILE* p_IP; //File su cui registrare peer connessi
 
     //Gestione input da stdin oppure da socket
     fd_set master;
@@ -58,7 +58,7 @@ int main(int argc, char** argv){
     memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(ds_port);
-	inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
+	inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);
     ret = bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(ret<0){
         perror("Error while binding");
@@ -77,7 +77,7 @@ int main(int argc, char** argv){
     comandi();
     
     while(1){
-        printf("Inizio\n");
+        //printf("Inizio\n");
         readset = master;
         //Controllo se c'e' qualcosa pronto
         ret = select(fdmax+1, &readset, NULL, NULL, NULL);
@@ -120,375 +120,256 @@ int main(int argc, char** argv){
             //Richiesta di connessione
             if(strcmp(recv_buffer, "CONN_REQ") == 0){
                 int received = 0;
+                int temp_port[2];
+                //Buffer per invio liste al peer
+                char list_buffer[LIST_MAX_LEN];
+                //Variabile per la lunghezza del messaggio da inviare al peer
+                int n;
+                //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
+                char list_update_buffer[LIST_MAX_LEN];
                 //Stringa che introduce la lista di peer vicini da inviare al peer richiedente
                 char list_buffer_h[MESS_TYPE_LEN+1] = "NBR_LIST\0";
 
-
-                //Se il peer e' il primo
-                if(connected_peers == 0){
-                    //Scrittura su file esterno di indirizzo IP e numero di porta
-                    p_IP = fopen("peer_addr.txt", "w");
-                    ret = fprintf(p_IP, "%s %d\n", peer_addr_buff, peer_port);
-                    fclose(p_IP);
-
-                    //Invio lista vuota e attendo 2 secondi per controllare che il peer non rimandi un messaggio di boot
-                    //(ovvero che abbia ricevuto correttamente la lista)
-                    while(!received){
-                        do {
-                            ret = sendto(server_socket, list_buffer_h, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&network_peer, peer_addr_len);
-                        } while(ret<0);
-                        
-                        printf("Lista vuota inviata a %d\n", peer_port);
-
-                        //Attesa di un secondo
-                        util_tv.tv_sec = 1;
-                        util_tv.tv_usec = 0;
-                        //Mi metto per un secondo solo in ascolto sul socket
-                        //Solo in ascolto di un'eventuale copia del messaggio di boot
-
-                        FD_ZERO(&readset);
-                        FD_SET(server_socket, &readset);
-
-                        ret = select(server_socket+1, &readset, NULL, NULL, &util_tv);
-
-                        //Se arriva qualcosa
-                        if(FD_ISSET(server_socket, &readset)){
-                            //Leggo cosa ho ricevuto
-                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
-                            //Se ho ricevuto lo stesso identico messaggio
-                            if(util_addr.sin_port == network_peer.sin_port && util_addr.sin_addr.s_addr == network_peer.sin_addr.s_addr && (strcmp(recv_buffer, "CONN_REQ")==0)){
-                                //Riinvio la lista al peer tornando a inizio while(!received)
-                                printf("Invio di nuovo la lista al peer\n");
-                                received = 0;
-                                break;
-                            }
-                            //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera')
-                            else {
-                                printf("E' arrivato un messaggio che ho scartato\n");
-                                received = 1;
-                            }
-
-                            FD_CLR(server_socket, &readset);
-                        }
-                        //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
-                        else
-                            received = 1;
-
+                //Inserisco il peer nella lista
+                if(!isIn(peer_port)){
+                    ret = insert_peer(peer_addr_buff, peer_port, connected_peers);
+                    if(ret<0){
+                        printf("Impossibile inserire il peer\n");
+                        //Uscita
+                        FD_CLR(server_socket, &readset);
+                        continue;
                     }
-
-                    //Fine inclusione primo peer nella rete
                 }
 
-                //Se il peer non e' il primo
-                else {
-                    //Variabili necessarie per l' inserimento ordinato
-                    FILE *temp;
-                    char temp_buff[INET_ADDRSTRLEN];
-                    int temp_port[2];
-                    //Buffer per invio liste al peer
-                    char list_buffer[LIST_MAX_LEN];
-                    //Variabile per la lunghezza del messaggio da inviare al peer
-                    int n;
-                    //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
-                    char list_buffer_1[LIST_MAX_LEN];
+                
+                get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
 
-                    //Pulisco il buffer in cui mettere la lista
-                    memset(list_buffer, 0, sizeof(char)*LIST_MAX_LEN);
+                //Compongo la lista
+                if(temp_port[0] == -1 && temp_port[1] == -1)
+                    n = sprintf(list_buffer, "%s", list_buffer_h);
+                else if(temp_port[1] == -1)
+                    n = sprintf(list_buffer, "%s %d", list_buffer_h, temp_port[0]);
+                else
+                    n = sprintf(list_buffer, "%s %d %d", list_buffer_h, temp_port[0], temp_port[1]);
 
-                    //Inserisco ordinatamente nel caso di due peer e invio la lista a loro
-                    if(connected_peers == 1){
-                        //Non la uso
-                        temp_port[1] = -1;
-                        p_IP = fopen("peer_addr.txt", "r");
-                        temp = fopen("temp.txt", "w");
+                printf("Numero di byte scritti: %d\n", n);
+                list_buffer[n] = '\0';
 
-                        fscanf(p_IP, "%s %d", temp_buff, &temp_port[0]);
-                        if(temp_port[0] < peer_port){
-                            fprintf(temp, "%s %d\n", temp_buff, temp_port[0]);
-                            fprintf(temp, "%s %d\n", peer_addr_buff, peer_port);
-                        }
-                        else {
-                            fprintf(temp, "%s %d\n", peer_addr_buff, peer_port);
-                            fprintf(temp, "%s %d\n", temp_buff, temp_port[0]);
-                        }
-                        fclose(temp);
-                        fclose(p_IP);
-                        remove("peer_addr.txt");
-                        rename("temp.txt", "peer_addr.txt");
+                
+                // DEBUG
+                printf("List buffer: %s\n", list_buffer);
 
-                        //Creo lista da inviare
-                        n = sprintf(list_buffer, "%s %d", list_buffer_h, temp_port[0]);
-                        list_buffer[n] = '\0';
-                    }
-                    //Inserisco ordinatamente nel caso di piu' di due peer
-                    else {
-                        //Variabili di servizio
-                        int serv,m,f;
-                        p_IP = fopen("peer_addr.txt", "r");
-                        temp = fopen("temp.txt", "w");
+                //Stessa operazione di invio di cui sopra
+                while(!received){
+                    do {
+                        ret = sendto(server_socket, list_buffer, n+1, 0, (struct sockaddr*)&network_peer, peer_addr_len);
+                    } while(ret<0);
 
-                        temp_port[0] = -1;
-                        //Prelevo i primi valori
-                        m = fscanf(p_IP, "%s %d", temp_buff, &serv);
-                        //Salvo il primo numero
-                        f = serv;
-                        //Finche' trovo valori e non arrivo alla fine...
-                        while(serv < peer_port && m == 2){
-                            //Salvo il precedente
-                            temp_port[0] = serv;
-                            //Lo stampo
-                            fprintf(temp, "%s %d\n", temp_buff, serv);
-                            //Provo a prenderne un altro
-                            m = fscanf(p_IP, "%s %d", temp_buff, &serv);
-                            //Lo metto come successivo
-                            temp_port[1] = serv;
-                        }
-
-                        //Quando esco dal while inserisco il valore
-                        fprintf(temp, "%s %d\n", temp_buff, peer_port);
-
-                        //Se non sono mai entrato nel while oppure sono arrivato in fondo
-                        //ovvero il mio valore e' il minimo o il massimo
-                        if(serv == f || m != 2)
-                            //Il peer successivo e' il primo che ho estratto
-                            temp_port[1] = f;
+                    util_len = sizeof(util_addr);
+                    //Attesa di un secondo
+                    util_tv.tv_sec = 1;
+                    util_tv.tv_usec = 0;
+                    //Mi metto per un secondo solo in ascolto sul socket
+                    //Solo in ascolto di un'eventuale copia del messaggio di boot
+                    FD_ZERO(&readset);
+                    FD_SET(server_socket, &readset);
                         
-                        //Se non ero arrivato in fondo al file
-                        if(m == 2)
-                            //Stampo il valore successivo a quello che dovevo inserire
-                            fprintf(temp, "%s %d\n", temp_buff, serv);
+                    ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
 
-                        //Inserisco gli altri finche' non finiscono
-                        while(fscanf(p_IP, "%s %d", temp_buff, &serv) == 2)
-                            fprintf(temp, "%s %d\n", temp_buff, serv);
-
-                        //Se non ero mai entrato nel while
-                        if(temp_port[0] == -1)
-                            //Il mio peer precedente e' il massimo, perche' io sono il minimo
-                            temp_port[0] = serv;   
-                        
-                        //Fine
-                        fclose(temp);
-                        fclose(p_IP);
-                        remove("peer_addr.txt");
-                        rename("temp.txt", "peer_addr.txt");
-
-                        //Creo lista da inviare
-                        n = sprintf(list_buffer, "%s %d %d", list_buffer_h, temp_port[0], temp_port[1]);
-                        list_buffer[n] = '\0';
-                    }
-
-                    
-                    // DEBUG
-                    printf("List buffer: %s\n", list_buffer);
-
-                    //Stessa operazione di invio di cui sopra
-                    while(!received){
-                        do {
-                            ret = sendto(server_socket, list_buffer, n, 0, (struct sockaddr*)&network_peer, peer_addr_len);
-                        } while(ret<0);
-
-                        util_len = sizeof(util_addr);
-                        //Attesa di un secondo
-                        util_tv.tv_sec = 1;
-                        util_tv.tv_usec = 0;
-                        //Mi metto per un secondo solo in ascolto sul socket
-                        //Solo in ascolto di un'eventuale copia del messaggio di boot
-                        FD_ZERO(&readset);
-                        FD_SET(server_socket, &readset);
-                            
-                        ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                        //Se arriva qualcosa
-                        if(FD_ISSET(server_socket, &readset)){
-                            //Leggo cosa ho ricevuto
-                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
-                            //Se ho ricevuto lo stesso identico messaggio
-                            if(util_addr.sin_port == network_peer.sin_port && util_addr.sin_addr.s_addr == network_peer.sin_addr.s_addr && (strcmp(recv_buffer, "CONN_REQ")==0)){
-                                //Riinvio la lista al peer tornando a inizio while(!received)
-                                received = 0;
-                                break;
-                            }
-                            //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera')
-                            else
-                                received = 1;
-                            
-                            FD_CLR(server_socket, &readset);
+                    //Se arriva qualcosa
+                    if(FD_ISSET(server_socket, &readset)){
+                        //Leggo cosa ho ricevuto
+                        ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
+                        //Se ho ricevuto lo stesso identico messaggio
+                        if(util_addr.sin_port == network_peer.sin_port && util_addr.sin_addr.s_addr == network_peer.sin_addr.s_addr && (strcmp(recv_buffer, "CONN_REQ")==0)){
+                            //Riinvio la lista al peer tornando a inizio while(!received)
+                            received = 0;
+                            break;
                         }
-                        //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
+                        //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera')
                         else
                             received = 1;
-                    }
-                    
-                    //Necessario inviare lista aggiornata ai peer a cui e' cambiata
-
-                    //Se uno solo allora e' facile
-                    if(connected_peers == 1){
-                        char list_update_h[MESS_TYPE_LEN+1] = "NBR_UPDT\0";
-                        int sent = 0;
                         
-                        n = sprintf(list_buffer_1, "%s %d", list_update_h, peer_port);
-                        list_buffer_1[n] = '\0';
-
-                        printf("Invio lista di update %s a %d\n", list_buffer_1, temp_port[0]);
-
-                        while(!sent){
-                            struct sockaddr_in peer_addr_1;
-                            memset(&peer_addr_1, 0, sizeof(peer_addr_1));
-                            peer_addr_1.sin_family = AF_INET;
-                            peer_addr_1.sin_port = htons(temp_port[0]);
-                            inet_pton(AF_INET, "127.0.0.1", &peer_addr_1.sin_addr);
-
-                            peer_addr_len = sizeof(peer_addr_1);
-                            //Invio lista
-                            do {
-                                ret = sendto(server_socket, list_buffer_1, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
-                            } while(ret<0);
-                            
-                            //Mi preparo a ricevere un messaggio dal peer
-                            FD_ZERO(&readset);
-                            FD_SET(server_socket, &readset);
-                            //Imposto il timeout a un secondo
-                            util_tv.tv_sec = 1;
-                            util_tv.tv_usec = 0;
-                            //Aspetto la lista
-                            ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                            //Appena la ricevo
-                            if(FD_ISSET(server_socket, &readset)){
-                                char temp_buffer[MESS_TYPE_LEN];
-                                //Ricevo ack
-                                ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
-                                printf("Ho ricevuto %s\n", recv_buffer);
-                                
-                                ret = sscanf(recv_buffer, "%s", temp_buffer);
-                                
-                                //Se ho ricevuto effettivamente l'ack
-                                if(strcmp("CHNG_ACK", temp_buffer) == 0){
-                                    //Il peer ha ricevuto sicuramente la lista
-                                    sent = 1;
-                                }
-
-                                //Ignoro qualunque altro messaggio
-
-                                FD_CLR(server_socket, &readset);
-                            }
-                        }
-
+                        FD_CLR(server_socket, &readset);
                     }
-
-                    //Se sono due li cerco e invio loro la lista
-                    else {
-                        char list_update_h[MESS_TYPE_LEN+1] = "NBR_UPDT\0";
-                        int sent = 0;
-                        int new_nbr[4];
-
-                        get_neighbors(temp_port[0], &new_nbr[0], &new_nbr[1]);
-                        get_neighbors(temp_port[1], &new_nbr[2], &new_nbr[3]);
-
-                        //Invio la lista al primo
-                        n = sprintf(list_buffer_1, "%s %d %d", list_update_h, new_nbr[0], new_nbr[1]);
-                        list_buffer_1[n] = '\0';
-                        printf("Invio lista di update %s a %d\n", list_buffer_1, temp_port[0]);
-
-                        while(!sent){
-                            struct sockaddr_in peer_addr_1;
-                            memset(&peer_addr_1, 0, sizeof(peer_addr_1));
-                            peer_addr_1.sin_family = AF_INET;
-                            peer_addr_1.sin_port = htons(temp_port[0]);
-                            inet_pton(AF_INET, "127.0.0.1", &peer_addr_1.sin_addr);
-
-                            peer_addr_len = sizeof(peer_addr_1);
-                            //Invio lista
-                            do {
-                                ret = sendto(server_socket, list_buffer_1, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
-                            } while(ret<0);
-                            
-                            //Mi preparo a ricevere un messaggio dal peer
-                            FD_ZERO(&readset);
-                            FD_SET(server_socket, &readset);
-                            //Imposto il timeout a un secondo
-                            util_tv.tv_sec = 1;
-                            util_tv.tv_usec = 0;
-                            //Aspetto la lista
-                            ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                            //Appena la ricevo
-                            if(FD_ISSET(server_socket, &readset)){
-                                char temp_buffer[MESS_TYPE_LEN];
-                                //Ricevo ack
-                                ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
-                                printf("Ho ricevuto %s\n", recv_buffer);
-                                
-                                ret = sscanf(recv_buffer, "%s", temp_buffer);
-                                
-                                //Se ho ricevuto effettivamente l'ack
-                                if(strcmp("CHNG_ACK", temp_buffer) == 0){
-                                    //Il peer ha ricevuto sicuramente la lista
-                                    sent = 1;
-                                }
-
-                                //Ignoro qualunque altro messaggio
-
-                                FD_CLR(server_socket, &readset);
-                            }
-                        }
-                        
-                        sent = 0;
-
-                        //Invio la lista al secondo
-                        n = sprintf(list_buffer_1, "%s %d %d", list_update_h, new_nbr[2], new_nbr[3]);
-                        list_buffer_1[n] = '\0';
-                        printf("Invio lista di update %s a %d\n", list_buffer_1, temp_port[1]);
-
-                        while(!sent){
-                            struct sockaddr_in peer_addr_1;
-                            memset(&peer_addr_1, 0, sizeof(peer_addr_1));
-                            peer_addr_1.sin_family = AF_INET;
-                            peer_addr_1.sin_port = htons(temp_port[1]);
-                            inet_pton(AF_INET, "127.0.0.1", &peer_addr_1.sin_addr);
-
-                            peer_addr_len = sizeof(peer_addr_1);
-                            //Invio lista
-                            do {
-                                ret = sendto(server_socket, list_buffer_1, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
-                            } while(ret<0);
-                            
-                            //Mi preparo a ricevere un messaggio dal peer
-                            FD_ZERO(&readset);
-                            FD_SET(server_socket, &readset);
-                            //Imposto il timeout a un secondo
-                            util_tv.tv_sec = 1;
-                            util_tv.tv_usec = 0;
-                            //Aspetto la lista
-                            ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                            //Appena la ricevo
-                            if(FD_ISSET(server_socket, &readset)){
-                                char temp_buffer[MESS_TYPE_LEN];
-                                //Ricevo ack
-                                ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
-                                printf("Ho ricevuto %s\n", recv_buffer);
-                                
-                                ret = sscanf(recv_buffer, "%s", temp_buffer);
-                                
-                                //Se ho ricevuto effettivamente l'ack
-                                if(strcmp("CHNG_ACK", temp_buffer) == 0){
-                                    //Il peer ha ricevuto sicuramente la lista
-                                    sent = 1;
-                                }
-
-                                //Ignoro qualunque altro messaggio
-
-                                FD_CLR(server_socket, &readset);
-                            }
-                        }
-                    }
-
+                    //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
+                    else
+                        received = 1;
                 }
                 
-                //Incremento il numero di peer
-                connected_peers++;            
+                //Necessario inviare lista aggiornata ai peer a cui e' cambiata
+
+                if(connected_peers == 0)
+                    connected_peers++;
+
+                //Se uno solo allora e' facile
+                else if(connected_peers == 1){
+                    char list_update_h[MESS_TYPE_LEN+1] = "NBR_UPDT\0";
+                    int sent = 0;
+                    
+                    n = sprintf(list_update_buffer, "%s %d", list_update_h, peer_port);
+                    list_update_buffer[n] = '\0';
+
+                    printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
+
+                    while(!sent){
+                        struct sockaddr_in peer_addr_1;
+                        memset(&peer_addr_1, 0, sizeof(peer_addr_1));
+                        peer_addr_1.sin_family = AF_INET;
+                        peer_addr_1.sin_port = htons(temp_port[0]);
+                        inet_pton(AF_INET, LOCALHOST, &peer_addr_1.sin_addr);
+
+                        peer_addr_len = sizeof(peer_addr_1);
+                        //Invio lista
+                        do {
+                            ret = sendto(server_socket, list_update_buffer, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
+                        } while(ret<0);
+                        
+                        //Mi preparo a ricevere un messaggio dal peer
+                        FD_ZERO(&readset);
+                        FD_SET(server_socket, &readset);
+                        //Imposto il timeout a un secondo
+                        util_tv.tv_sec = 1;
+                        util_tv.tv_usec = 0;
+                        //Aspetto la lista
+                        ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
+
+                        //Appena la ricevo
+                        if(FD_ISSET(server_socket, &readset)){
+                            char temp_buffer[MESS_TYPE_LEN];
+                            //Ricevo ack
+                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
+                            printf("Ho ricevuto %s\n", recv_buffer);
+                            
+                            ret = sscanf(recv_buffer, "%s", temp_buffer);
+                            
+                            //Se ho ricevuto effettivamente l'ack
+                            if(strcmp("CHNG_ACK", temp_buffer) == 0){
+                                //Il peer ha ricevuto sicuramente la lista
+                                sent = 1;
+                            }
+
+                            //Ignoro qualunque altro messaggio
+
+                            FD_CLR(server_socket, &readset);
+                        }
+                    }
+
+                    connected_peers++;
+
+                }
+
+                //Se sono due li cerco e invio loro la lista
+                else {
+                    char list_update_h[MESS_TYPE_LEN+1] = "NBR_UPDT\0";
+                    int sent = 0;
+                    int new_nbr[4];
+
+                    //Connected peers: +1 perche' nel file sono gia' 3 ma quel numero vale ancora 2
+                    get_neighbors(temp_port[0], connected_peers+1, &new_nbr[0], &new_nbr[1]);
+                    get_neighbors(temp_port[1], connected_peers+1, &new_nbr[2], &new_nbr[3]);
+
+                    //Invio la lista al primo
+                    n = sprintf(list_update_buffer, "%s %d %d", list_update_h, new_nbr[0], new_nbr[1]);
+                    list_update_buffer[n] = '\0';
+                    printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
+
+                    while(!sent){
+                        struct sockaddr_in peer_addr_1;
+                        memset(&peer_addr_1, 0, sizeof(peer_addr_1));
+                        peer_addr_1.sin_family = AF_INET;
+                        peer_addr_1.sin_port = htons(temp_port[0]);
+                        inet_pton(AF_INET, LOCALHOST, &peer_addr_1.sin_addr);
+
+                        peer_addr_len = sizeof(peer_addr_1);
+                        //Invio lista
+                        do {
+                            ret = sendto(server_socket, list_update_buffer, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
+                        } while(ret<0);
+                        
+                        //Mi preparo a ricevere un messaggio dal peer
+                        FD_ZERO(&readset);
+                        FD_SET(server_socket, &readset);
+                        //Imposto il timeout a un secondo
+                        util_tv.tv_sec = 1;
+                        util_tv.tv_usec = 0;
+                        //Aspetto la lista
+                        ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
+
+                        //Appena la ricevo
+                        if(FD_ISSET(server_socket, &readset)){
+                            char temp_buffer[MESS_TYPE_LEN];
+                            //Ricevo ack
+                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
+                            printf("Ho ricevuto %s\n", recv_buffer);
+                            
+                            ret = sscanf(recv_buffer, "%s", temp_buffer);
+                            
+                            //Se ho ricevuto effettivamente l'ack
+                            if(strcmp("CHNG_ACK", temp_buffer) == 0){
+                                //Il peer ha ricevuto sicuramente la lista
+                                sent = 1;
+                            }
+
+                            //Ignoro qualunque altro messaggio
+
+                            FD_CLR(server_socket, &readset);
+                        }
+                    }
+                    
+                    sent = 0;
+
+                    //Invio la lista al secondo
+                    n = sprintf(list_update_buffer, "%s %d %d", list_update_h, new_nbr[2], new_nbr[3]);
+                    list_update_buffer[n] = '\0';
+                    printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
+
+                    while(!sent){
+                        struct sockaddr_in peer_addr_1;
+                        memset(&peer_addr_1, 0, sizeof(peer_addr_1));
+                        peer_addr_1.sin_family = AF_INET;
+                        peer_addr_1.sin_port = htons(temp_port[1]);
+                        inet_pton(AF_INET, LOCALHOST, &peer_addr_1.sin_addr);
+
+                        peer_addr_len = sizeof(peer_addr_1);
+                        //Invio lista
+                        do {
+                            ret = sendto(server_socket, list_update_buffer, n+1, 0, (struct sockaddr*)&peer_addr_1, peer_addr_len);
+                        } while(ret<0);
+                        
+                        //Mi preparo a ricevere un messaggio dal peer
+                        FD_ZERO(&readset);
+                        FD_SET(server_socket, &readset);
+                        //Imposto il timeout a un secondo
+                        util_tv.tv_sec = 1;
+                        util_tv.tv_usec = 0;
+                        //Aspetto la lista
+                        ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
+
+                        //Appena la ricevo
+                        if(FD_ISSET(server_socket, &readset)){
+                            char temp_buffer[MESS_TYPE_LEN];
+                            //Ricevo ack
+                            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&peer_addr_1, &peer_addr_len);
+                            printf("Ho ricevuto %s\n", recv_buffer);
+                            
+                            ret = sscanf(recv_buffer, "%s", temp_buffer);
+                            
+                            //Se ho ricevuto effettivamente l'ack
+                            if(strcmp("CHNG_ACK", temp_buffer) == 0){
+                                //Il peer ha ricevuto sicuramente la lista
+                                sent = 1;
+                            }
+
+                            //Ignoro qualunque altro messaggio
+
+                            FD_CLR(server_socket, &readset);
+                        }
+                    }
+
+                    connected_peers++;
+                }
+
             }
 
             if(strcmp(recv_buffer, "CLT_EXIT") == 0){
@@ -505,7 +386,7 @@ int main(int argc, char** argv){
 
                 memset(&temp_peer_addr, 0, sizeof(temp_peer_addr));
                 temp_peer_addr.sin_family = AF_INET;
-                inet_pton(AF_INET, "127.0.0.1", &temp_peer_addr.sin_addr);
+                inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
                 temp_peer_addr_len = sizeof(temp_peer_addr);
 
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
@@ -605,7 +486,7 @@ int main(int argc, char** argv){
                         printf("Inviato SRV_EXIT a %d\n", focus_port);
                         temp_peer_addr.sin_port = htons(focus_port);
                         temp_peer_addr.sin_family = AF_INET;
-                        inet_pton(AF_INET, "127.0.0.1", &temp_peer_addr.sin_addr);
+                        inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
 
                         do {
                             ret = sendto(server_socket, exit, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&temp_peer_addr, temp_peer_addr_len);
