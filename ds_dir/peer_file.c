@@ -225,3 +225,46 @@ void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* 
 
     list_buffer[(*list_length)] = '\0';
 }
+
+void print_peers(int connected){
+    int i;
+    printf("Peer connessi alla rete:");
+    if(!connected)
+        printf(" nessuno!");
+
+    for(i=0; i<connected; i++)
+        printf("\n%d", get_port(i));
+
+    printf("\n");
+}
+
+void print_single_neighbor(int connected, int port){
+    if(!isIn(port))
+        printf("Peer %d non connesso alla rete!\n", port);
+    else {
+        int temp_port[2];
+        get_neighbors(port, connected, &temp_port[0], &temp_port[1]);
+        printf("Vicini del peer %d: ", port);
+        if(temp_port[0] == -1 && temp_port[1] == -1)
+            printf("nessuno!\n");
+        else if(temp_port[1] == -1)
+            printf("soltanto %d\n", temp_port[0]);
+        else
+            printf("%d e %d\n", temp_port[0], temp_port[1]);
+    }
+}
+
+void print_all_neighbors(int connected){
+    int i;
+    switch(connected){
+        case 1:
+            printf("Vicini del peer %d: nessuno!\n", get_port(0));
+            break;
+        case 2:
+            printf("Vicini del peer %d: soltanto %d\n", get_port(0), get_port(1));
+            printf("Vicini del peer %d: soltanto %d\n", get_port(1), get_port(0));
+        default:
+            for(i=0; i<connected; i++)
+                printf("Vicini del peer %d: %d e %d\n", get_port(i), get_port((i-1)%connected), get_port((i+1)%connected));
+    }
+}

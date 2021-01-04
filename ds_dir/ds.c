@@ -118,20 +118,14 @@ int main(int argc, char** argv){
 
             //Richiesta di connessione
             if(strcmp(recv_buffer, "CONN_REQ") == 0){
-                int temp_port[2];
-                //Buffer per invio liste al peer
-                char list_buffer[LIST_MAX_LEN];
-                //Variabile per la lunghezza del messaggio da inviare al peer
-                int n;
-                //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
-                char list_update_buffer[LIST_MAX_LEN];
-                //Struttura di supporto per inviare liste nuove
-                struct sockaddr_in temp_peer_addr;
+                int temp_port[2]; //Variabili per salvare eventuali vicini
+                char list_buffer[LIST_MAX_LEN]; //Buffer per invio liste al peer                
+                int n; //Variabile per la lunghezza del messaggio da inviare al peer             
+                char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini            
+                struct sockaddr_in temp_peer_addr; //Struttura di supporto per inviare liste nuove
                 
                 printf("Arrivata richiesta di connessione dal peer %d\n", peer_port); 
-                        
-
-
+                
                 //Inserisco il peer nella lista
                 if(!isIn(peer_port)){
                     ret = insert_peer(peer_addr_buff, peer_port, connected_peers);
@@ -143,11 +137,8 @@ int main(int argc, char** argv){
                     }
                 }
 
-
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
-
                 printf("Vicini: %d e %d\n", temp_port[0], temp_port[1]);
-
                 //Compongo la lista
                 if(temp_port[0] == -1 && temp_port[1] == -1)
                     n = sprintf(list_buffer, "%s", "NBR_LIST");
@@ -158,38 +149,22 @@ int main(int argc, char** argv){
 
                 // DEBUG
                 printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
-
                 //Invio
                 ack_2(server_socket, list_buffer, n+1, &network_peer, peer_addr_len, &readset, "CONN_REQ");
 
                 //Invio eventuale lista aggiornata al primo peer
                 if(temp_port[0] != -1){
                     //Preparo la struttura che devo tirare su
-                    memset(&temp_peer_addr, 0, sizeof(temp_peer_addr));
-                    temp_peer_addr.sin_family = AF_INET;
-                    temp_peer_addr.sin_port = htons(temp_port[0]);
-                    inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
-                    peer_addr_len = sizeof(temp_peer_addr);
-                    
+                    clear_address(&temp_peer_addr, &peer_addr_len, temp_port[0]);
                     get_list(temp_port[0], connected_peers, "NBR_UPDT", list_update_buffer, &n);
-
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
-
                     ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
                 }
 
                 if(temp_port[1] != -1){
-
-                    memset(&temp_peer_addr, 0, sizeof(temp_peer_addr));
-                    temp_peer_addr.sin_family = AF_INET;
-                    temp_peer_addr.sin_port = htons(temp_port[1]);
-                    inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
-                    peer_addr_len = sizeof(temp_peer_addr);
-
+                    clear_address(&temp_peer_addr, &peer_addr_len, temp_port[1]);
                     get_list(temp_port[1], connected_peers, "NBR_UPDT", list_update_buffer, &n);
-
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
-
                     ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
                 }
 
@@ -256,37 +231,31 @@ int main(int argc, char** argv){
 
         //Gestione comandi da stdin
         if(FD_ISSET(0, &readset)) {
-            scanf("%s", command_buffer);
-            if(strcmp(command_buffer,"help\0")==0){
+            //Parsing dell'input
+            int neighbor_peer;
+            int input_number;
+            char command[MAX_COMMAND];
+            
+            fgets(command_buffer, MAX_COMMAND, stdin);
+            input_number = sscanf(command_buffer, "%s %d", command, &neighbor_peer);
+            if(strcmp(command,"help\0")==0){
                 comandi();
             }
 
-            else if(strcmp(command_buffer,"showpeers\0")==0){
-                int i;
-                printf("Peer connessi alla rete:");
-                if(!connected_peers)
-                    printf(" nessuno!");
-
-                for(i=0; i<connected_peers; i++)
-                    printf("\n%d", get_port(i));
-
-                printf("\n");
+            else if(strcmp(command,"showpeers\0")==0){
+                print_peers(connected_peers);
             }
 
-            else if(strcmp(command_buffer,"showneighbor\0")==0){
-                int focus_peer_port;
-
-                printf("Inserisci numero di peer di cui vuoi conoscere i vicini (0 se vuoi conoscere i vicini di tutti i peer): ");
-                scanf("%d", &focus_peer_port);
-                if(focus_peer_port == 0){
-                    printf("Vuoi conoscere i vicini di tutti i peer\n");
-                }
-                else {
-                    printf("Vuoi conoscere i vicini del peer %d\n", focus_peer_port);
-                }
+            else if(strcmp(command,"showneighbor\0")==0){
+                if(connected_peers == 0)
+                    printf("Nessun peer connesso\n");
+                else if(input_number == 2)
+                    print_single_neighbor(connected_peers, neighbor_peer);
+                else
+                    print_all_neighbors(connected_peers);
             }
             
-            else if(strcmp(command_buffer,"esc\0")==0){
+            else if(strcmp(command,"esc\0")==0){
                 
                 //DEBUG
                 printf("Hai digitato comando esc\n");

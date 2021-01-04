@@ -20,14 +20,18 @@ void comandi(){
     printf("esc --> termina il DS\n");
 }
 
-int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     memset(addr_p, 0, sizeof((*addr_p)));
 	addr_p->sin_family = AF_INET;
 	addr_p->sin_port = htons(port);
 	inet_pton(AF_INET, LOCALHOST, &addr_p->sin_addr);
     
-    (*len_p) = sizeof((*addr_p));
+    (*len_p) = sizeof((*addr_p));\
+}
+
+int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    clear_address(addr_p, len_p, port);
 
     return sock;
 }

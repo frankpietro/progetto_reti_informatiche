@@ -4,3 +4,6 @@ int get_port(int);
 int isIn(int);
 void remove_peer(int);
 void get_list(int,int,char*,char*,int*);
+void print_peers(int);
+void print_single_neighbor(int,int);
+void print_all_neighbors(int);
