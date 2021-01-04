@@ -231,8 +231,9 @@ int main(int argc, char** argv){
 
                 //Controllo che la connessione esista
                 if(!started){
-                    printf("Il peer non e' connesso al DS. Il comando non ha effetto\n");
-                    continue;
+                    printf("Il peer non e' connesso al DS. Uscita\n");
+                    close(listener_socket);
+                    _exit(0);
                 }
 
                 //Gestisce i propri dati

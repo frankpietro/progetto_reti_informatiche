@@ -59,5 +59,3 @@ se informazioni dal socket {
         }
     }
 }
-
-Prova
