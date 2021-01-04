@@ -623,6 +623,7 @@ int main(int argc, char** argv){
                         if(FD_ISSET(server_socket, &readset)){
                             ret = recvfrom(server_socket, exit_ack_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&temp_peer_addr, &temp_peer_addr_len);
                             int del_port = ntohs(temp_peer_addr.sin_port);
+                            printf("Messaggio dal peer %d: %s\n", del_port, exit_ack_buffer);
                             if(strcmp(exit_ack_buffer, "ACK_S_XT")==0 && del_port == focus_port){
                                 //Elimino quel peer e ricomincio da capo
                                 //DEBUG
