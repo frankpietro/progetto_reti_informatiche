@@ -179,9 +179,11 @@ int isIn(int port){
     
     fd = fopen("peer_addr.txt", "r");
 
-    while(fscanf(fd, "%s %d", temp_buffer, &serv)==2){
-        if(serv == port)
-            return 1;
+    if(fd){
+        while(fscanf(fd, "%s %d", temp_buffer, &serv)==2){
+            if(serv == port)
+                return 1;
+        }
     }
 
     return 0;

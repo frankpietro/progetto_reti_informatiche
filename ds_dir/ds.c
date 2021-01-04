@@ -9,7 +9,11 @@
 #include <unistd.h>
 #include <time.h>
 
+//Gestione del file con i peer
 #include "peer_file.h"
+
+//Gesione degli ack
+#include "ack.h"
 
 #define MAX_COMMAND 30
 #define MESS_TYPE_LEN 8
@@ -84,6 +88,7 @@ int main(int argc, char** argv){
 
 
         if(FD_ISSET(server_socket, &readset)){
+            printf("Arrivato messaggio sul socket\n");
             //Lunghezza della struttura in cui salvare le info del peer
             peer_addr_len = sizeof(network_peer);
             
@@ -101,6 +106,7 @@ int main(int argc, char** argv){
             //Ricezione richieste di connessione
             ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&network_peer, &peer_addr_len);
             
+
             if(ret<0){
                 perror("Errore di ricezione");
                 //Uscita
@@ -119,7 +125,7 @@ int main(int argc, char** argv){
 
             //Richiesta di connessione
             if(strcmp(recv_buffer, "CONN_REQ") == 0){
-                int received = 0;
+                //int received = 0;
                 int temp_port[2];
                 //Buffer per invio liste al peer
                 char list_buffer[LIST_MAX_LEN];
@@ -141,6 +147,7 @@ int main(int argc, char** argv){
                     }
                 }
 
+                printf("Arrivata richiesta di connessione dal peer %d\n", peer_port);
                 
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
 
@@ -159,7 +166,9 @@ int main(int argc, char** argv){
                 // DEBUG
                 printf("List buffer: %s\n", list_buffer);
 
-                //Stessa operazione di invio di cui sopra
+                //Invio
+                ack_2(server_socket, list_buffer, n+1, &network_peer, peer_addr_len, &readset, "CONN_REQ");
+/*
                 while(!received){
                     do {
                         ret = sendto(server_socket, list_buffer, n+1, 0, (struct sockaddr*)&network_peer, peer_addr_len);
@@ -196,7 +205,7 @@ int main(int argc, char** argv){
                     else
                         received = 1;
                 }
-                
+*/
                 //Necessario inviare lista aggiornata ai peer a cui e' cambiata
 
                 if(connected_peers == 0)
