@@ -94,7 +94,7 @@ int main(int argc, char** argv){
                 int sscanf_ret;
                 struct timeval util_tv;
                 //Messaggio da inviare per collegarsi
-                char conn_req_buffer[MESS_TYPE_LEN] = "CONN_REQ";
+                char conn_req_buffer[MESS_TYPE_LEN+1] = "CONN_REQ\0";
 
 
                 //Richiesta dati DS
@@ -117,7 +117,7 @@ int main(int argc, char** argv){
                     addrlen = sizeof(server_addr);
                     //Invio boot message
                     do {
-                        ret = sendto(listener_socket, conn_req_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&server_addr, addrlen);
+                        ret = sendto(listener_socket, conn_req_buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, addrlen);
                         printf("Invio richiesta di connessione\n");
                     } while(ret<0);
                     
@@ -340,7 +340,7 @@ int main(int argc, char** argv){
                             char* change_ack_buff = "CHNG_ACK\0";
                             struct timeval util_tv;
                             do {
-                                ret = sendto(listener_socket, change_ack_buff, MESS_TYPE_LEN, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+                                ret = sendto(listener_socket, change_ack_buff, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
                             } while(ret<0);
 
                             util_len = sizeof(util_addr);
