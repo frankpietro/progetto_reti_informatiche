@@ -266,22 +266,18 @@ int main(int argc, char** argv){
                     char exit_ack_buffer[MESS_TYPE_LEN]; //Messaggio da ricevere
                     struct sockaddr_in temp_peer_addr; //Struttura in cui salvare indirizzo del peer a cui volta volta inviare o da cui ricevere
                     socklen_t temp_peer_addr_len; //Lunghezza della struttura sopra
-                    struct timeval util_tv; //Attesa sul select
-                    int removed = 0; //Per capire quando uscire da questo while
+                    int removed = 0;
                     //Invia a tutti i peer un messaggio
                     int i;
                     //DEBUG
                     printf("Invio serie di messaggi SRV_EXIT\n");
                     for(i=0; i<connected_peers; i++){
-                        int focus_port = get_port(i);
                         //Invia al peer il messaggio di exit
-                        temp_peer_addr_len = sizeof(temp_peer_addr);
+                        clear_address(&temp_peer_addr, &temp_peer_addr_len, get_port(i));
+                        printf("Invio SRV_EXIT a %d\n", get_port(i));
 
-                        printf("Inviato SRV_EXIT a %d\n", focus_port);
-                        temp_peer_addr.sin_port = htons(focus_port);
-                        temp_peer_addr.sin_family = AF_INET;
-                        inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
-
+                        ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, &temp_peer_addr_len, &readset, "ACK_S_XT");
+/*
                         do {
                             ret = sendto(server_socket, exit, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&temp_peer_addr, temp_peer_addr_len);
                         } while(ret<0);
@@ -318,7 +314,9 @@ int main(int argc, char** argv){
 
                             FD_CLR(server_socket, &readset);
                         
-                        }
+                        }*/
+
+                        removed++;
 
                     }
                     
