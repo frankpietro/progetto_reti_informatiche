@@ -7,8 +7,8 @@ select per monitorare arrivo informazioni
 se informazioni dal socket {
     ricevo e leggo pacchetto UDP
     se richiesta di connessione {
+        aggiungo il peer alla lista di peer connessi
         se primo peer {
-            lo aggiungo al file di peer connessi
             gli invio una lista vuota
             aspetto ACK 2
         }

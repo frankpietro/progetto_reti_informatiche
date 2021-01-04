@@ -210,3 +210,18 @@ void remove_peer(int port){
     remove("peer_addr.txt");
     rename("temp.txt", "peer_addr.txt");
 }
+
+void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* list_length){
+    int temp_port[2];
+    get_neighbors(peer, connected+1, &temp_port[0], &temp_port[1]);
+
+    //Compongo la lista
+    if(temp_port[0] == -1 && temp_port[1] == -1)
+        (*list_length) = sprintf(list_buffer, "%s", mess_type);
+    else if(temp_port[1] == -1)
+        (*list_length) = sprintf(list_buffer, "%s %d", mess_type, temp_port[0]);
+    else
+        (*list_length) = sprintf(list_buffer, "%s %d %d", mess_type, temp_port[0], temp_port[1]);
+
+    list_buffer[(*list_length)] = '\0';
+}

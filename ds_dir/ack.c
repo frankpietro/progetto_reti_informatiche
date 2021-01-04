@@ -72,7 +72,6 @@ void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
     printf("Messaggio inviato correttamente\n");
 }
 
-
 /*
     Utilizzo: quando viene inviato il secondo messaggio di uno scambio UDP
 
