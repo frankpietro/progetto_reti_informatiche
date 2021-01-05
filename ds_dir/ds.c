@@ -13,8 +13,8 @@
 #include "../util/util.h"
 //Gestione del file con i peer
 #include "../util/peer_file.h"
-//Gesione degli ack
-#include "../util/ack.h"
+//Gesione dei messaggi
+#include "../util/msg.h"
 
 #define MAX_COMMAND 30
 #define MESS_TYPE_LEN 8
@@ -194,14 +194,14 @@ int main(int argc, char** argv){
                     printf("Eliminato l'ultimo peer connesso\n");
                 }
                 else {
-                    clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[0]);
                     get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
+                    clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[0]);
                     printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[0], list_update);
                     ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
                     
                     if(temp_nbr_port[1] != -1){
-                        clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[1]);
                         get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
+                        clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[1]);
                         printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[1], list_update);
                         ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
                     }

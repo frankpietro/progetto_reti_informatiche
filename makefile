@@ -1,10 +1,10 @@
 all: ./ds_dir/ds ./peer_1_dir/peer
 
-./peer_1_dir/peer: ./peer_1_dir/peer.o ./util/ack.o ./util/util.o
-	gcc -Wall ./peer_1_dir/peer.o ./util/ack.o ./util/util.o -o ./peer_1_dir/peer
+./peer_1_dir/peer: ./peer_1_dir/peer.o ./util/msg.o ./util/util.o
+	gcc -Wall ./peer_1_dir/peer.o ./util/msg.o ./util/util.o -o ./peer_1_dir/peer
 
-./ds_dir/ds: ./ds_dir/ds.o ./util/peer_file.o ./util/ack.o ./util/util.o
-	gcc -Wall ./ds_dir/ds.o ./util/peer_file.o ./util/ack.o ./util/util.o -o ./ds_dir/ds
+./ds_dir/ds: ./ds_dir/ds.o ./util/peer_file.o ./util/msg.o ./util/util.o
+	gcc -Wall ./ds_dir/ds.o ./util/peer_file.o ./util/msg.o ./util/util.o -o ./ds_dir/ds
 
 ./peer_1_dir/peer.o: ./peer_1_dir/peer.c
 	gcc -Wall -c ./peer_1_dir/peer.c -o ./peer_1_dir/peer.o
@@ -15,8 +15,8 @@ all: ./ds_dir/ds ./peer_1_dir/peer
 ./util/peer_file.o: ./util/peer_file.c ./util/peer_file.h
 	gcc -Wall -c ./util/peer_file.c -o ./util/peer_file.o
 
-./util/ack.o: ./util/ack.c ./util/ack.h
-	gcc -Wall -c ./util/ack.c -o ./util/ack.o
+./util/msg.o: ./util/msg.c ./util/msg.h
+	gcc -Wall -c ./util/msg.c -o ./util/msg.o
 
 ./util/util.o: ./util/util.c ./util/util.h
 	gcc -Wall -c ./util/util.c -o ./util/util.o
