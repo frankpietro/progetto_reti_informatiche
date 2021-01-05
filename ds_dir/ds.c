@@ -10,11 +10,11 @@
 #include <time.h>
 
 //Funzioni di utilita'
-#include "util.h"
+#include "../util/util.h"
 //Gestione del file con i peer
-#include "peer_file.h"
+#include "../util/peer_file.h"
 //Gesione degli ack
-#include "ack.h"
+#include "../util/ack.h"
 
 #define MAX_COMMAND 30
 #define MESS_TYPE_LEN 8
