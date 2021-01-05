@@ -1,4 +1,6 @@
 void clear_address(struct sockaddr_in*,socklen_t*,int);
 int prepare(struct sockaddr_in*,socklen_t*,int);
-void ack_1(int,char*,int,struct sockaddr_in*,socklen_t,/*fd_set*,*/char*);
-void ack_2(int,char*,int,struct sockaddr_in*,socklen_t,fd_set*,char*);
+void ack(int,char*,int,int,char*);
+void send_UDP(int,char*,int,int,char*);
+int recv_UDP(int,char*,int);
+int s_recv_UDP(int,char*,int);

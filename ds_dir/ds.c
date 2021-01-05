@@ -21,29 +21,22 @@
 #define LIST_MAX_LEN 21
 #define LOCALHOST "127.0.0.1"
 
+//Variabili
+int server_socket;  //Socket su cui il server riceve messaggi dai peer
+struct sockaddr_in server_addr;     //Struttura per gestire il socket
+socklen_t server_len;
+
+char command_buffer[MAX_COMMAND];   //Buffer su cui salvare i comandi provenienti da stdin
+char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
+
+int connected_peers;    //Numero di peers connessi alla rete
+
+//Gestione input da stdin oppure da socket
+fd_set master;
+fd_set readset;
+int fdmax;
+
 int main(int argc, char** argv){
-    //Variabili
-    int server_socket;  //Socket su cui il server riceve messaggi dai peer
-    struct sockaddr_in server_addr;     //Struttura per gestire il socket
-    socklen_t server_len;
-    
-    int ret;    //Variabile di servizio per funzioni che ritornano un intero di controllo
-    char command_buffer[MAX_COMMAND];   //Buffer su cui salvare i comandi provenienti da stdin
-    char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
-
-    //Variabili per gestire comunicazione coi peer
-    struct sockaddr_in network_peer;
-    socklen_t peer_addr_len;
-    
-    int connected_peers;    //Numero di peers connessi alla rete
-    
-    //Gestione input da stdin oppure da socket
-    fd_set master;
-    fd_set readset;
-    int fdmax;
-    
-    //------------------------------------------------
-
     //Pulizia set
     FD_ZERO(&master);
     FD_ZERO(&readset);
@@ -66,31 +59,18 @@ int main(int argc, char** argv){
         //printf("Inizio\n");
         readset = master;
         //Controllo se c'e' qualcosa pronto
-        ret = select(fdmax+1, &readset, NULL, NULL, NULL);
+        select(fdmax+1, &readset, NULL, NULL, NULL);
 
 
         if(FD_ISSET(server_socket, &readset)){
             printf("Arrivato messaggio sul socket\n");
-            //Lunghezza della struttura in cui salvare le info del peer
-            peer_addr_len = sizeof(network_peer);
             
             //Variabili per salvare porta e indirizzo
             char peer_addr_buff[INET_ADDRSTRLEN];
             int peer_port;
             
             //Ricezione richieste di connessione
-            ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&network_peer, &peer_addr_len);
-            if(ret<0){
-                perror("Errore di ricezione");
-                //Uscita
-                FD_CLR(server_socket, &readset);
-                continue;
-            }
-
-            //Porta scritta in formato normale
-            peer_port = ntohs(network_peer.sin_port);
-            //IP scritto come stringa
-            inet_ntop(AF_INET, &network_peer.sin_addr, peer_addr_buff, INET_ADDRSTRLEN);
+            peer_port = s_recv_UDP(server_socket, recv_buffer, MESS_TYPE_LEN);
 
             recv_buffer[MESS_TYPE_LEN] = '\0';
 
@@ -101,15 +81,13 @@ int main(int argc, char** argv){
                 int temp_port[2]; //Variabili per salvare eventuali vicini
                 char list_buffer[LIST_MAX_LEN]; //Buffer per invio liste al peer                
                 int n; //Variabile per la lunghezza del messaggio da inviare al peer             
-                char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini            
-                struct sockaddr_in temp_peer_addr; //Struttura di supporto per inviare liste nuove
+                char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
                 
                 printf("Arrivata richiesta di connessione dal peer %d\n", peer_port); 
                 
                 //Inserisco il peer nella lista
                 if(!isIn(peer_port)){
-                    ret = insert_peer(peer_addr_buff, peer_port, connected_peers);
-                    if(ret<0){
+                    if(insert_peer(peer_addr_buff, peer_port, connected_peers)<0){
                         printf("Impossibile inserire il peer\n");
                         //Uscita
                         FD_CLR(server_socket, &readset);
@@ -118,7 +96,7 @@ int main(int argc, char** argv){
                 }
 
                 //Ack dell'arrivo della richiesta
-                ack_2(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, &network_peer, peer_addr_len, &readset, "CONN_REQ");
+                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
 
                 //Preparazione lista
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
@@ -135,22 +113,20 @@ int main(int argc, char** argv){
                 printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
 
                 //Invio
-                ack_1(server_socket, list_buffer, n+1, &network_peer, peer_addr_len,/* &readset, */"LIST_ACK");
+                send_UDP(server_socket, list_buffer, n+1, peer_port, "LIST_ACK");
 
                 //Invio eventuale lista aggiornata al primo peer
                 if(temp_port[0] != -1){
                     //Preparo la struttura che devo tirare su
-                    clear_address(&temp_peer_addr, &peer_addr_len, temp_port[0]);
                     get_list(temp_port[0], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
-                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len,/* &readset,*/ "CHNG_ACK");
+                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[0], "CHNG_ACK");
                 }
 
                 if(temp_port[1] != -1){
-                    clear_address(&temp_peer_addr, &peer_addr_len, temp_port[1]);
                     get_list(temp_port[1], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
-                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len,/* &readset, */"CHNG_ACK");
+                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[1], "CHNG_ACK");
                 }
 
                 //Incremento il numero di peer
@@ -162,14 +138,6 @@ int main(int argc, char** argv){
                 int temp_nbr_port[2];
                 char list_update[LIST_MAX_LEN];
                 int n;
-                
-                //Per inviare ACK al peer rimasto 
-                struct sockaddr_in temp_peer_addr;
-                socklen_t temp_peer_addr_len;
-
-                //Per inviare le liste aggiornate ai peer
-                struct sockaddr_in update_peer_addr;
-                socklen_t update_peer_addr_len;
 
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
 
@@ -180,8 +148,8 @@ int main(int argc, char** argv){
                     continue;
                 }
 
-
                 get_neighbors(peer_port, connected_peers, &temp_nbr_port[0], &temp_nbr_port[1]);
+                
                 printf("Elimino il peer dalla rete. Aggiorno la lista di vicini di %d e %d\n", temp_nbr_port[0], temp_nbr_port[1]);
 
                 print_peers(connected_peers);
@@ -195,21 +163,18 @@ int main(int argc, char** argv){
                 }
                 else {
                     get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
-                    clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[0]);
                     printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[0], list_update);
-                    ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, /*&readset,*/ "CHNG_ACK");
+                    send_UDP(server_socket, list_update, n+1, temp_nbr_port[0], "CHNG_ACK");
                     
                     if(temp_nbr_port[1] != -1){
                         get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
-                        clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[1]);
                         printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[1], list_update);
-                        ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len,/* &readset, */"CHNG_ACK");
+                        send_UDP(server_socket, list_update, n+1, temp_nbr_port[1], "CHNG_ACK");
                     }
 
                 }
 
-                clear_address(&temp_peer_addr, &temp_peer_addr_len, peer_port);
-                ack_2(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len, &readset, "CLT_EXIT");
+                ack(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, peer_port, "CLT_EXIT");
 
                 connected_peers--;
                 
@@ -246,9 +211,6 @@ int main(int argc, char** argv){
             }
             
             else if(strcmp(command,"esc\0")==0){
-                char exit[MESS_TYPE_LEN+1] = "SRV_EXIT\0"; //Messaggio da inviare
-                struct sockaddr_in temp_peer_addr; //Struttura in cui salvare indirizzo del peer a cui volta volta inviare o da cui ricevere
-                socklen_t temp_peer_addr_len; //Lunghezza della struttura sopra
                 int removed = 0;
                 //Invia a tutti i peer un messaggio
                 int i;
@@ -256,9 +218,8 @@ int main(int argc, char** argv){
                 printf("Invio serie di messaggi SRV_EXIT\n");
                 for(i=0; i<connected_peers; i++){
                     //Invia al peer il messaggio di exit
-                    clear_address(&temp_peer_addr, &temp_peer_addr_len, get_port(i));
                     printf("Invio SRV_EXIT a %d\n", get_port(i));
-                    ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len,/* &readset, */"ACK_S_XT");
+                    send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN+1, get_port(i), "ACK_S_XT");
                     removed++;
                 }
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)

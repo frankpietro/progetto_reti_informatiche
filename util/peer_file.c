@@ -165,11 +165,11 @@ int insert_peer(char* addr, int port, int connected){
         remove("peer_addr.txt");
         rename("temp.txt", "peer_addr.txt");
 
-        return 2;
+        return 1;
     }
 
     //Questa riga non dovrebbe mai essere eseguita
-    return 0;
+    return -1;
 }
 
 int isIn(int port){
