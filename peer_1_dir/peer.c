@@ -9,6 +9,9 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include "../util/ack.h"
+#include "../util/util.h"
+
 #define MAX_IN 20   //Massima lunghezza comando da terminale
 #define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP
 #define DATE_LEN 10 //Lunghezza di una stringa contenente la data in formato dd:mm:yyyy
@@ -16,19 +19,12 @@
 #define LIST_MAX_LEN 21 //Massima lunghezza lista di vicini
 #define SOCK_MAX_LEN 30
 
-void comandi(){
-    printf("Elenco dei comandi disponibili:\n");
-    printf("start DS_addr DS_port --> richiede al Discovery Server connessione alla rete\n");
-    printf("add type quantity --> aggiunge una entry nel registro del peer\n");
-    printf("get aggr type [date1 date2] --> richiede un dato aggregato\n");
-    printf("stop --> richiede disconnessione dalla rete\n");
-}
-
 int main(int argc, char** argv){
     //Variabili
-    int port;   //Porta del socket di ascolto
+    //int port;   //Porta del socket di ascolto
     int listener_socket;    //Descrittore del socket di ascolto
     struct sockaddr_in listener_addr;   //Struttura per gestire il socket di ascolto
+    socklen_t listener_addr_len;
     int ret;    //Variabile di servizio
     char stdin_buff[MAX_IN];    //Buffer per i comandi da standard input
     char sock_buff[SOCK_MAX_LEN];
@@ -48,24 +44,15 @@ int main(int argc, char** argv){
 
 
     //Creazione socket di ascolto
-    port = atoi(argv[1]);
-    listener_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&listener_addr, 0, sizeof(listener_addr));
-	listener_addr.sin_family = AF_INET;
-	listener_addr.sin_port = htons(port);
-	inet_pton(AF_INET, "127.0.0.1", &listener_addr.sin_addr);
-    ret = bind(listener_socket, (struct sockaddr*)&listener_addr, sizeof(listener_addr));
-    if(ret<0){
-        perror("Error while binding");
-        exit(0);
-    }
+    //port = atoi(argv[1]);
+    listener_socket = prepare(&listener_addr, &listener_addr_len, atoi(argv[1]));
 
     //All'inizio nessun vicino
     neighbors[0] = 0;
     neighbors[1] = 0;
 
     //Stampa elenco comandi
-    comandi();
+    comandi_client();
 
     FD_SET(listener_socket, &master);
     FD_SET(0, &master);
@@ -81,6 +68,11 @@ int main(int argc, char** argv){
         if(FD_ISSET(0, &readset)){
             //Richiede comando
             scanf("%s", stdin_buff);
+
+            if(strcmp(stdin_buff,"help\0")==0){
+                comandi_client();
+            }
+
 
             //Connessione al server
             if(strcmp(stdin_buff,"start\0")==0){
@@ -304,7 +296,6 @@ int main(int argc, char** argv){
                     int count;
                     int temp_n[2];
                     //Variabile di controllo
-                    int ok = 1;
 
                     count = sscanf(sock_buff, "%s %d %d", mess_type_buff, &temp_n[0], &temp_n[1]);
                     
@@ -328,106 +319,21 @@ int main(int argc, char** argv){
                             break;
                         default:
                             printf("Questa riga di codice non dovrebbe mai andare in esecuzione\n");
-                            ok = 0;
                             break;
                     }
 
                     //Invio ACK
-                    if(ok){
-                        //Quando arriva la lista invio un ack con lo stesso protocollo per quando la lista viene inviata in risposta alla richiesta
-                        int acked = 0;
-                        while(!acked){
-                            char* change_ack_buff = "CHNG_ACK\0";
-                            struct timeval util_tv;
-                            do {
-                                ret = sendto(listener_socket, change_ack_buff, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
-                            } while(ret<0);
-
-                            util_len = sizeof(util_addr);
-                            //Attesa di un secondo
-                            util_tv.tv_sec = 1;
-                            util_tv.tv_usec = 0;
-                            //Mi metto per un secondo solo in ascolto sul socket
-                            //Solo in ascolto di un'eventuale copia del messaggio di prima
-                            FD_ZERO(&readset);
-                            FD_SET(listener_socket, &readset);
-
-                            ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                            //Se arriva qualcosa
-                            if(FD_ISSET(listener_socket, &readset)){
-                                //Leggo il titolo di cosa ho ricevuto
-                                ret = recvfrom(listener_socket, sock_buff, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
-                                //Se ho ricevuto lo stesso identico messaggio
-                                if(util_addr.sin_port == server_addr.sin_port && util_addr.sin_addr.s_addr == server_addr.sin_addr.s_addr && (strcmp(sock_buff, "NBR_UPDT")==0)){
-                                    //Riinvio l'ack al server tornando a inizio while(!acked)
-                                    acked = 0;
-                                    break;
-                                }
-                                //Se ho ricevuto un messaggio diverso lo scarto
-                                else
-                                    acked = 1;
-
-                                FD_CLR(listener_socket, &readset);
-                            }
-                            //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
-                            else
-                                acked = 1;
-                        }
-
-
-                    }
-
+                    ack_2(listener_socket, "CHNG_ACK", MESS_TYPE_LEN+1, &server_addr, sizeof(server_addr), &readset, "NBR_UPDT");
                 }
             
                 //Notifica chiusura server
                 if(strcmp(mess_type_buff, "SRV_EXIT")==0){
-                    int acked = 0;
-
                     printf("Il server sta per chiudere\n");
 
                     //Fa qualcosa coi dati
 
-                    //Invia ACK di chiusura e chiude
-                    while(!acked){
-                        char* exit_ack_buff = "ACK_S_XT\0";
-                        struct timeval util_tv;
-                        do {
-                            ret = sendto(listener_socket, exit_ack_buff, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
-                        } while(ret<0);
-
-                        util_len = sizeof(util_addr);
-                        //Attesa di un secondo
-                        util_tv.tv_sec = 1;
-                        util_tv.tv_usec = 0;
-                        //Mi metto per un secondo solo in ascolto sul socket
-                        //Solo in ascolto di un'eventuale copia del messaggio di prima
-                        FD_ZERO(&readset);
-                        FD_SET(listener_socket, &readset);
-
-                        ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-
-                        //Se arriva qualcosa
-                        if(FD_ISSET(listener_socket, &readset)){
-                            //Leggo il titolo di cosa ho ricevuto
-                            ret = recvfrom(listener_socket, sock_buff, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
-                            //Se ho ricevuto lo stesso identico messaggio
-                            if(util_addr.sin_port == server_addr.sin_port && util_addr.sin_addr.s_addr == server_addr.sin_addr.s_addr && (strcmp(sock_buff, "SRV_EXIT")==0)){
-                                //Riinvio l'ack al server tornando a inizio while(!acked)
-                                FD_CLR(listener_socket, &readset);
-                                acked = 0;
-                                break;
-                            }
-                            //Se ho ricevuto un messaggio diverso lo scarto
-                            else
-                                acked = 1;
-
-                            FD_CLR(listener_socket, &readset);
-                        }
-                        //Se per due secondi non arriva nulla, considero terminata con successo l'operazione
-                        else
-                            acked = 1;
-                    }
+                    //Invia ACK
+                    ack_2(listener_socket, "ACK_S_XT", MESS_TYPE_LEN+1, &server_addr, sizeof(server_addr), &readset, "SRV_EXIT");
 
                     //Chiude
                     printf("Chiusura peer\n");

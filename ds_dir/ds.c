@@ -23,8 +23,6 @@
 
 int main(int argc, char** argv){
     //Variabili
-    int ds_port;    //Porta del server, passata come argomento del main
-    
     int server_socket;  //Socket su cui il server riceve messaggi dai peer
     struct sockaddr_in server_addr;     //Struttura per gestire il socket
     socklen_t server_len;
@@ -50,17 +48,7 @@ int main(int argc, char** argv){
     FD_ZERO(&readset);
 
     //Creazione socket di ascolto
-    ds_port = atoi(argv[1]);
-    server_socket = prepare(&server_addr, &server_len, ds_port);/*socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(ds_port);
-	inet_pton(AF_INET, LOCALHOST, &server_addr.sin_addr);*/
-    ret = bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(ret<0){
-        perror("Error while binding");
-        exit(0);
-    }
+    server_socket = prepare(&server_addr, &server_len, atoi(argv[1]));
     
     //All'inizio nessun peer connesso
     connected_peers = 0;
@@ -71,7 +59,7 @@ int main(int argc, char** argv){
     FD_SET(0, &master);
 
 
-    comandi();
+    comandi_server();
     
     while(1){
         //printf("Inizio\n");
@@ -233,7 +221,7 @@ int main(int argc, char** argv){
             fgets(command_buffer, MAX_COMMAND, stdin);
             input_number = sscanf(command_buffer, "%s %d", command, &neighbor_peer);
             if(strcmp(command,"help\0")==0){
-                comandi();
+                comandi_server();
             }
 
             else if(strcmp(command,"showpeers\0")==0){

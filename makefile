@@ -1,7 +1,7 @@
 all: ./ds_dir/ds ./peer_1_dir/peer
 
-./peer_1_dir/peer: ./peer_1_dir/peer.o
-	gcc -Wall ./peer_1_dir/peer.o -o ./peer_1_dir/peer
+./peer_1_dir/peer: ./peer_1_dir/peer.o ./util/ack.o ./util/util.o
+	gcc -Wall ./peer_1_dir/peer.o ./util/ack.o ./util/util.o -o ./peer_1_dir/peer
 
 ./ds_dir/ds: ./ds_dir/ds.o ./util/peer_file.o ./util/ack.o ./util/util.o
 	gcc -Wall ./ds_dir/ds.o ./util/peer_file.o ./util/ack.o ./util/util.o -o ./ds_dir/ds

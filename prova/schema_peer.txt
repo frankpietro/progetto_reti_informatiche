@@ -1,0 +1,36 @@
+select per monitorare arrivo informazioni
+se informazioni dal socket {
+    ricevo e leggo pacchetto UDP
+    se cambio lista vicini {
+        leggo i nuovi vicini
+        modifico la lista di neighbors attraverso uno switch
+        invio un pacchetto di ack
+        aspetto ACK 2
+    }
+    se spegnimento server {
+        //gestisco i dati
+        invio ack
+        aspetto ACK 2
+        chiudo il socket
+        esco
+    }
+
+    se informazioni da stdin {
+        se help
+            stampa i comandi
+        se showpeers
+            stampa i peer
+        se showneighbor {
+            stampa i vicini ()
+        }
+        se esc {
+            per ogni peer {
+                invia un messaggio di uscita
+                attende ACK 1
+            }
+            cancella file di peer
+            chiude il socket
+            esce
+        }
+    }
+}

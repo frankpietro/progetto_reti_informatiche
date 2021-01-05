@@ -44,20 +44,20 @@ se informazioni dal socket {
 
     se informazioni da stdin {
         se help
-            stampa i comandi
+            stampo i comandi
         se showpeers
-            stampa i peer
+            stampo i peer
         se showneighbor {
-            stampa i vicini ()
+            stampo i vicini ()
         }
         se esc {
             per ogni peer {
-                invia un messaggio di uscita
+                invio un messaggio di uscita
                 attende ACK 1
             }
-            cancella file di peer
-            chiude il socket
-            esce
+            cancello file di peer
+            chiudo il socket
+            esco
         }
     }
 }
