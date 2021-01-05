@@ -1,6 +1,3 @@
-ACK 1: inviare pacchetto e aspettare ACK dell'altro, altrimenti riinviare il pacchetto
-ACK 2: inviare pacchetto e controllare che l'altro non riinvii niente
-
 SCHEMA DISCOVERY SERVER
 
 select per monitorare arrivo informazioni
@@ -8,22 +5,18 @@ se informazioni dal socket {
     ricevo e leggo pacchetto UDP
     se richiesta di connessione {
         invio ack
-        aspetto ACK 2
         aggiungo il peer alla lista di peer connessi
         se primo peer {
             gli invio una lista vuota
-            aspetto ACK 1
         }
         altrimenti {
             cerco i vicini
             compongo la lista da inviare
             la invio
-            aspetto ACK 1
             cerco peer a cui e' cambiata lista di prossimita'
             per ogni vicino {
                 compongo lista di prossimita'
                 la invio
-                aspetto ACK 1
             }
         }
         aggiorno numero peer connessi
@@ -37,29 +30,26 @@ se informazioni dal socket {
             per ogni vicino {
                 compongo lista di prossimita'
                 la invio
-                aspetto ACK 1
             }
         }
         invio ack
-        aspetto ACK 2
-    }
-
-    se informazioni da stdin {
-        se help
-            stampo i comandi
-        se showpeers
-            stampo i peer
-        se showneighbor {
-            stampo i vicini ()
-        }
-        se esc {
-            per ogni peer {
-                invio un messaggio di uscita
-                attende ACK 1
-            }
-            cancello file di peer
-            chiudo il socket
-            esco
-        }
     }
 }
+
+se informazioni da stdin {
+    se help
+        stampo i comandi
+    se showpeers
+        stampo i peer
+    se showneighbor {
+        stampo i vicini in base a quanti sono
+    }
+    se esc {
+        per ogni peer {
+            invio un messaggio di uscita
+        }
+        cancello file di peer
+        chiudo il socket
+        esco
+    }
+    }

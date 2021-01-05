@@ -1,44 +1,46 @@
+SCHEMA PEER
+
 select per monitorare arrivo informazioni
 se informazioni dal socket {
     ricevo e leggo pacchetto UDP
-    se cambio lista vicini {
-        leggo i nuovi vicini
-        modifico la lista di neighbors attraverso uno switch
-        invio un pacchetto di ack
-        aspetto ACK 2
-    }
-    se spegnimento server {
-        //gestisco i dati
-        invio ack
-        aspetto ACK 2
-        chiudo il socket
-        esco
-    }
-
-    se informazioni da stdin {
-        se help
-            stampo i comandi
-        se start {
-            invio richiesta di connessione al server
-            aspetto ACK 1
-            ricevo la lista
+    se dal server {
+        se cambio lista vicini {
+            leggo i nuovi vicini
+            modifico la lista di neighbors attraverso uno switch
             invio ack
-            aspetto ACK 2
-            aggiungo i vicini
-
         }
-        se add {
-            //
-        }
-        se get {
-            //
-        }
-        se stop {
-            //Gestisce i dati
-            invio messaggio di uscita
-            attendo ACK 1
+        se spegnimento server {
+            //gestisco i dati
+            invio ack
             chiudo il socket
             esco
         }
+    }
+    se da un vicino {
+
+    }
+}
+
+se informazioni da stdin {
+    se help
+        stampo i comandi
+    se start {
+        invio richiesta di connessione al server
+        ricevo la lista
+        invio ack
+        aggiungo i vicini
+
+    }
+    se add {
+        //
+    }
+    se get {
+        //
+    }
+    se stop {
+        //Gestisce i dati
+        invio messaggio di uscita
+        chiudo il socket
+        esco
     }
 }
