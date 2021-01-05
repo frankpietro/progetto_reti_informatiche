@@ -38,6 +38,8 @@ se informazioni dal socket {
                 aspetto ACK 1
             }
         }
+        invio ack
+        aspetto ACK 2
     }
 
     se informazioni da stdin {
@@ -46,7 +48,7 @@ se informazioni dal socket {
         se showpeers
             stampa i peer
         se showneighbor {
-            -- ancora da scrivere
+            stampa i vicini ()
         }
         se esc {
             per ogni peer {

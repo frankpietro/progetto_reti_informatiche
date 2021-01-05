@@ -281,7 +281,7 @@ int main(int argc, char** argv){
             else {
                 printf("Errore, comando non esistente\n");
             }
-        
+            memset(stdin_buff, '\0', sizeof(stdin_buff));
             FD_CLR(0, &readset);
         }
 
@@ -393,7 +393,7 @@ int main(int argc, char** argv){
                         char* exit_ack_buff = "ACK_S_XT\0";
                         struct timeval util_tv;
                         do {
-                            ret = sendto(listener_socket, exit_ack_buff, MESS_TYPE_LEN, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+                            ret = sendto(listener_socket, exit_ack_buff, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
                         } while(ret<0);
 
                         util_len = sizeof(util_addr);

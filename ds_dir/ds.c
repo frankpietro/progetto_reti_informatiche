@@ -89,17 +89,8 @@ int main(int argc, char** argv){
             char peer_addr_buff[INET_ADDRSTRLEN];
             int peer_port;
             
-            //Variabili per gestire la consistenza della comunicazione UDP
-            struct sockaddr_in util_addr;
-            socklen_t util_len;
-            struct timeval util_tv;
-
-            util_len = sizeof(util_addr);
-            
             //Ricezione richieste di connessione
             ret = recvfrom(server_socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&network_peer, &peer_addr_len);
-            
-
             if(ret<0){
                 perror("Errore di ricezione");
                 //Uscita
@@ -156,14 +147,14 @@ int main(int argc, char** argv){
                 if(temp_port[0] != -1){
                     //Preparo la struttura che devo tirare su
                     clear_address(&temp_peer_addr, &peer_addr_len, temp_port[0]);
-                    get_list(temp_port[0], connected_peers, "NBR_UPDT", list_update_buffer, &n);
+                    get_list(temp_port[0], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
                     ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
                 }
 
                 if(temp_port[1] != -1){
                     clear_address(&temp_peer_addr, &peer_addr_len, temp_port[1]);
-                    get_list(temp_port[1], connected_peers, "NBR_UPDT", list_update_buffer, &n);
+                    get_list(temp_port[1], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
                     ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
                 }
@@ -173,23 +164,21 @@ int main(int argc, char** argv){
             }
 
             if(strcmp(recv_buffer, "CLT_EXIT") == 0){
-                //Vettore per salvare porte temporanee
-                int temp_nbr_port[4];
-                char list_update_h[MESS_TYPE_LEN+1] = "NBR_UPDT\0";
+                //Variabili per salvare informazioni temporanee
+                int temp_nbr_port[2];
                 char list_update[LIST_MAX_LEN];
                 int n;
-                int received = 0;
                 
-                //Per inviare le liste aggiornate ai peer
+                //Per inviare ACK al peer rimasto 
                 struct sockaddr_in temp_peer_addr;
                 socklen_t temp_peer_addr_len;
 
-                memset(&temp_peer_addr, 0, sizeof(temp_peer_addr));
-                temp_peer_addr.sin_family = AF_INET;
-                inet_pton(AF_INET, LOCALHOST, &temp_peer_addr.sin_addr);
-                temp_peer_addr_len = sizeof(temp_peer_addr);
+                //Per inviare le liste aggiornate ai peer
+                struct sockaddr_in update_peer_addr;
+                socklen_t update_peer_addr_len;
 
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
+
                 //Se il peer per qualche motivo non e' in lista non faccio nulla
                 if(!isIn(peer_port)){
                     printf("Peer %d non presente nella lista dei peer connessi. Uscita\n", peer_port);
@@ -197,31 +186,36 @@ int main(int argc, char** argv){
                     continue;
                 }
 
-                //4 casi da gestire (si suppone che i dati a questo punto siano consistenti)
-                switch(connected_peers){
-                    case 1:
-                        //Se l'ultimo peer chiede di uscire, cancello il file e via
-                        printf("Elimino l'ultimo peer dalla rete\n");
-                        remove("peer_addr.txt");
-                        break;
-                    case 2:
-                        printf("Elimino il penultimo peer dalla rete. Aggiorno la lista di vicini dell'ultimo\n");
-                        remove_peer(peer_port);
-                        
-                        //Prendo numero di porta dell'ultimo peer e gli invio la lista vuota
-                        temp_nbr_port[0] = get_port(0);
-                        
 
-                        break;
+                get_neighbors(peer_port, connected_peers, &temp_nbr_port[0], &temp_nbr_port[1]);
+                printf("Elimino il peer dalla rete. Aggiorno la lista di vicini di %d e %d\n", temp_nbr_port[0], temp_nbr_port[1]);
 
-                    case 3:
-                        break;
+                print_peers(connected_peers);
 
-                    default:
+                remove_peer(peer_port);
+                
+                print_peers(connected_peers-1);
 
-                        break;
+                if(temp_nbr_port[0] == -1){
+                    printf("Eliminato l'ultimo peer connesso\n");
+                }
+                else {
+                    clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[0]);
+                    get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
+                    ack_1(server_socket, list_update, MESS_TYPE_LEN+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
+                    
+                    if(temp_nbr_port[1] != -1){
+                        clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[1]);
+                        get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
+                        ack_1(server_socket, list_update, MESS_TYPE_LEN+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
+                    }
+
                 }
 
+                clear_address(&temp_peer_addr, &temp_peer_addr_len, peer_port);
+                ack_2(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len, &readset, "CLT_EXIT");
+
+                connected_peers--;
                 
             }
 
@@ -256,75 +250,23 @@ int main(int argc, char** argv){
             }
             
             else if(strcmp(command,"esc\0")==0){
-                
+                char exit[MESS_TYPE_LEN+1] = "SRV_EXIT\0"; //Messaggio da inviare
+                struct sockaddr_in temp_peer_addr; //Struttura in cui salvare indirizzo del peer a cui volta volta inviare o da cui ricevere
+                socklen_t temp_peer_addr_len; //Lunghezza della struttura sopra
+                int removed = 0;
+                //Invia a tutti i peer un messaggio
+                int i;
                 //DEBUG
-                printf("Hai digitato comando esc\n");
-
-                //Stacca tutti i peer
-                while(connected_peers){
-                    char exit[MESS_TYPE_LEN+1] = "SRV_EXIT\0"; //Messaggio da inviare
-                    char exit_ack_buffer[MESS_TYPE_LEN]; //Messaggio da ricevere
-                    struct sockaddr_in temp_peer_addr; //Struttura in cui salvare indirizzo del peer a cui volta volta inviare o da cui ricevere
-                    socklen_t temp_peer_addr_len; //Lunghezza della struttura sopra
-                    int removed = 0;
-                    //Invia a tutti i peer un messaggio
-                    int i;
-                    //DEBUG
-                    printf("Invio serie di messaggi SRV_EXIT\n");
-                    for(i=0; i<connected_peers; i++){
-                        //Invia al peer il messaggio di exit
-                        clear_address(&temp_peer_addr, &temp_peer_addr_len, get_port(i));
-                        printf("Invio SRV_EXIT a %d\n", get_port(i));
-
-                        ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, &temp_peer_addr_len, &readset, "ACK_S_XT");
-/*
-                        do {
-                            ret = sendto(server_socket, exit, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&temp_peer_addr, temp_peer_addr_len);
-                        } while(ret<0);
-
-                        FD_ZERO(&readset);
-                        FD_SET(server_socket, &readset);
-                        //Attesa: un secondo
-                        util_tv.tv_sec = 1;
-                        util_tv.tv_usec = 0;
-
-                        ret = select(server_socket+1,&readset, NULL, NULL, &util_tv);
-
-                        //Se arriva un ACK della chiusura del server
-                        if(FD_ISSET(server_socket, &readset)){
-                            ret = recvfrom(server_socket, exit_ack_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&temp_peer_addr, &temp_peer_addr_len);
-                            int del_port = ntohs(temp_peer_addr.sin_port);
-                            printf("Messaggio dal peer %d: %s\n", del_port, exit_ack_buffer);
-                            if(strcmp(exit_ack_buffer, "ACK_S_XT")==0 && del_port == focus_port){
-                                //Elimino quel peer e ricomincio da capo
-                                //DEBUG
-                                printf("ACK_S_XT ricevuto da %d\n", del_port);
-
-                                if(isIn(del_port)){
-                                    removed++;
-                                    printf("Peer %d rimosso dalla rete\n", del_port);
-                                }
-                                //Se arriva ack duplicato, lo ignoro
-                                else
-                                    printf("Rimozione del peer %d fallita", del_port);
-                            }
-                            else {
-                                printf("Arrivato pacchetto non di ack di chiusura, ignorato\n");
-                            }
-
-                            FD_CLR(server_socket, &readset);
-                        
-                        }*/
-
-                        removed++;
-
-                    }
-                    
-                    //Aggiorno il numero di peer connessi (dovrebbe essere 0)
-                    connected_peers -= removed;
-
+                printf("Invio serie di messaggi SRV_EXIT\n");
+                for(i=0; i<connected_peers; i++){
+                    //Invia al peer il messaggio di exit
+                    clear_address(&temp_peer_addr, &temp_peer_addr_len, get_port(i));
+                    printf("Invio SRV_EXIT a %d\n", get_port(i));
+                    ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len, &readset, "ACK_S_XT");
+                    removed++;
                 }
-
+                //Aggiorno il numero di peer connessi (dovrebbe essere 0)
+                connected_peers = 0;
                 //Cancello il file con la lista di peer
                 remove("peer_addr.txt");
 

@@ -192,29 +192,38 @@ int isIn(int port){
 void remove_peer(int port){
     FILE *fd, *temp;
     char temp_buffer[INET_ADDRSTRLEN];
-    int serv;
-    
-    fd = fopen("peer_addr.txt", "r");
-    temp = fopen("temp.txt", "w");
-    
-    fscanf(fd, "%s %d", temp_buffer, &serv);
+    int serv,ret;
 
-    while(serv < port){
-        fprintf(temp, "%s %d", temp_buffer, serv);
-        fscanf(fd, "%s %d", temp_buffer, &serv);
+    fd = fopen("peer_addr.txt", "r");
+    
+    ret = fscanf(fd, "%s %d", temp_buffer, &serv);
+    if(ret < 2){
+        fclose(fd);
+        remove("peer_addr.txt");
+    }
+    else {
+        temp = fopen("temp.txt", "w");
+
+        while(serv < port){
+            fprintf(temp, "%s %d\n", temp_buffer, serv);
+            fscanf(fd, "%s %d", temp_buffer, &serv);
+        }
+
+        while(fscanf(fd, "%s %d", temp_buffer, &serv)==2)
+            fprintf(temp, "%s %d\n", temp_buffer, serv);
+    
     }
 
-    while(fscanf(fd, "%s %d", temp_buffer, &serv)==2)
-        fprintf(temp, "%s %d", temp_buffer, serv);
-    
+    fclose(fd);
+    fclose(temp);
     remove("peer_addr.txt");
     rename("temp.txt", "peer_addr.txt");
 }
 
 void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* list_length){
     int temp_port[2];
-    get_neighbors(peer, connected+1, &temp_port[0], &temp_port[1]);
-
+    get_neighbors(peer, connected, &temp_port[0], &temp_port[1]);
+    printf("Vicini di %d: %d e %d\n", peer, temp_port[0], temp_port[1]);
     //Compongo la lista
     if(temp_port[0] == -1 && temp_port[1] == -1)
         (*list_length) = sprintf(list_buffer, "%s", mess_type);
@@ -224,6 +233,8 @@ void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* 
         (*list_length) = sprintf(list_buffer, "%s %d %d", mess_type, temp_port[0], temp_port[1]);
 
     list_buffer[(*list_length)] = '\0';
+
+    printf("Lista preparata: %s\n", list_buffer);
 }
 
 void print_peers(int connected){
@@ -263,6 +274,7 @@ void print_all_neighbors(int connected){
         case 2:
             printf("Vicini del peer %d: soltanto %d\n", get_port(0), get_port(1));
             printf("Vicini del peer %d: soltanto %d\n", get_port(1), get_port(0));
+            break;
         default:
             for(i=0; i<connected; i++)
                 printf("Vicini del peer %d: %d e %d\n", get_port(i), get_port((i-1)%connected), get_port((i+1)%connected));
