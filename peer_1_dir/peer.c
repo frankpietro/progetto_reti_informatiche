@@ -110,7 +110,7 @@ int main(int argc, char** argv){
                 clear_address(&server_addr, &server_addr_len, DS_port);
 
                 //Invio richiesta di connessione e attendo ACK
-                ack_1(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, &server_addr, server_addr_len, &readset, "CONN_ACK");
+                ack_1(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, &server_addr, server_addr_len, /*&readset, */"CONN_ACK");
 
                 is_list = 0;
                 while(!is_list){
@@ -221,7 +221,7 @@ int main(int argc, char** argv){
 
                 //Gestisce i propri dati
 
-                ack_1(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, &server_addr, server_addr_len, &readset, "ACK_C_XT");
+                ack_1(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, &server_addr, server_addr_len, /*&readset, */"ACK_C_XT");
 
                 close(listener_socket);
                 _exit(0);

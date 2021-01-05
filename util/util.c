@@ -28,27 +28,3 @@ void comandi_client(){
     printf("get aggr type [date1 date2] --> richiede un dato aggregato\n");
     printf("stop --> richiede disconnessione dalla rete\n");
 }
-
-void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
-    memset(addr_p, 0, sizeof((*addr_p)));
-	addr_p->sin_family = AF_INET;
-	addr_p->sin_port = htons(port);
-	inet_pton(AF_INET, LOCALHOST, &addr_p->sin_addr);
-    
-    (*len_p) = sizeof((*addr_p));\
-}
-
-int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
-    int ret;
-    int sock;
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    clear_address(addr_p, len_p, port);
-
-    ret = bind(sock, (struct sockaddr*)addr_p, (*len_p));
-    if(ret<0){
-        perror("Error while binding");
-        exit(0);
-    }
-
-    return sock;
-}

@@ -135,7 +135,7 @@ int main(int argc, char** argv){
                 printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
 
                 //Invio
-                ack_1(server_socket, list_buffer, n+1, &network_peer, peer_addr_len, &readset, "LIST_ACK");
+                ack_1(server_socket, list_buffer, n+1, &network_peer, peer_addr_len,/* &readset, */"LIST_ACK");
 
                 //Invio eventuale lista aggiornata al primo peer
                 if(temp_port[0] != -1){
@@ -143,14 +143,14 @@ int main(int argc, char** argv){
                     clear_address(&temp_peer_addr, &peer_addr_len, temp_port[0]);
                     get_list(temp_port[0], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
-                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
+                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len,/* &readset,*/ "CHNG_ACK");
                 }
 
                 if(temp_port[1] != -1){
                     clear_address(&temp_peer_addr, &peer_addr_len, temp_port[1]);
                     get_list(temp_port[1], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
-                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len, &readset, "CHNG_ACK");
+                    ack_1(server_socket, list_update_buffer, n+1, &temp_peer_addr, peer_addr_len,/* &readset, */"CHNG_ACK");
                 }
 
                 //Incremento il numero di peer
@@ -197,13 +197,13 @@ int main(int argc, char** argv){
                     get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
                     clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[0]);
                     printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[0], list_update);
-                    ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
+                    ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, /*&readset,*/ "CHNG_ACK");
                     
                     if(temp_nbr_port[1] != -1){
                         get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
                         clear_address(&update_peer_addr, &update_peer_addr_len, temp_nbr_port[1]);
                         printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[1], list_update);
-                        ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len, &readset, "CHNG_ACK");
+                        ack_1(server_socket, list_update, n+1, &update_peer_addr, update_peer_addr_len,/* &readset, */"CHNG_ACK");
                     }
 
                 }
@@ -258,7 +258,7 @@ int main(int argc, char** argv){
                     //Invia al peer il messaggio di exit
                     clear_address(&temp_peer_addr, &temp_peer_addr_len, get_port(i));
                     printf("Invio SRV_EXIT a %d\n", get_port(i));
-                    ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len, &readset, "ACK_S_XT");
+                    ack_1(server_socket, exit, MESS_TYPE_LEN+1, &temp_peer_addr, temp_peer_addr_len,/* &readset, */"ACK_S_XT");
                     removed++;
                 }
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)

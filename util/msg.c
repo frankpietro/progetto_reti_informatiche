@@ -12,6 +12,32 @@
 #define MESS_TYPE_LEN 8
 #define MAX_RECV 40
 
+#define LOCALHOST "127.0.0.1"
+
+void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
+    memset(addr_p, 0, sizeof((*addr_p)));
+	addr_p->sin_family = AF_INET;
+	addr_p->sin_port = htons(port);
+	inet_pton(AF_INET, LOCALHOST, &addr_p->sin_addr);
+    
+    (*len_p) = sizeof((*addr_p));\
+}
+
+int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
+    int ret;
+    int sock;
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    clear_address(addr_p, len_p, port);
+
+    ret = bind(sock, (struct sockaddr*)addr_p, (*len_p));
+    if(ret<0){
+        perror("Error while binding");
+        exit(0);
+    }
+
+    return sock;
+}
+
 /*
     Utilizzo: quando viene inviato il primo messaggio di uno scambio UDP
 
@@ -23,13 +49,14 @@
     readset_p: puntatore a set di descrittori in lettura (passare &readset)
     acked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
 */
-void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, socklen_t recv_l, fd_set* readset_p, char* acked){
+void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, socklen_t recv_l,/* fd_set* readset_p,*/ char* acked){
     int sent,ret;
     struct sockaddr_in util_addr;
     socklen_t util_len;
     char recv_buffer[MAX_RECV];
     char recv_buffer_h[MESS_TYPE_LEN+1];
     struct timeval util_tv;
+    fd_set* readset_p;
 
     sent = 0;
     ret = 0;
@@ -139,4 +166,11 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
     }
 
     printf("Messaggio ricevuto correttamente\n");
+}
+
+//Potenziamento della funzione ack_1
+void send_UDP(int socket, char* buffer, int buff_l, int recv_port, fd_set* readset_p, char* acked){
+    struct sockaddr_in recv_addr;
+    socklen_t recv_addr_len;
+
 }
