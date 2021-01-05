@@ -277,6 +277,6 @@ void print_all_neighbors(int connected){
             break;
         default:
             for(i=0; i<connected; i++)
-                printf("Vicini del peer %d: %d e %d\n", get_port(i), get_port((i-1)%connected), get_port((i+1)%connected));
+                printf("Vicini del peer %d: %d e %d\n", get_port(i), get_port((i-1+connected)%connected), get_port((i+1)%connected));
     }
 }

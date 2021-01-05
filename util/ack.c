@@ -10,6 +10,7 @@
 #include <time.h>
 
 #define MESS_TYPE_LEN 8
+#define MAX_RECV 40
 
 /*
     Utilizzo: quando viene inviato il primo messaggio di uno scambio UDP
@@ -26,7 +27,8 @@ void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
     int sent,ret;
     struct sockaddr_in util_addr;
     socklen_t util_len;
-    char recv_buffer[MESS_TYPE_LEN+1];
+    char recv_buffer[MAX_RECV];
+    char recv_buffer_h[MESS_TYPE_LEN+1];
     struct timeval util_tv;
 
     sent = 0;
@@ -52,9 +54,11 @@ void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
         if(FD_ISSET(socket, readset_p)){
             //Ricevo ack
             ret = recvfrom(socket, recv_buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, &util_len);
+
+            ret = sscanf(recv_buffer, "%s", recv_buffer_h);
             
             //Se ho ricevuto effettivamente l'ack
-            if(util_addr.sin_port == recv_addr->sin_port && util_addr.sin_addr.s_addr == recv_addr->sin_addr.s_addr && strcmp(acked, recv_buffer) == 0){
+            if(util_addr.sin_port == recv_addr->sin_port && util_addr.sin_addr.s_addr == recv_addr->sin_addr.s_addr && strcmp(acked, recv_buffer_h) == 0){
                 //Il peer ha ricevuto sicuramente la lista
                 printf("Ho ricevuto %s da %d\n", recv_buffer, ntohs(util_addr.sin_port));
                 sent = 1;
@@ -62,7 +66,7 @@ void ack_1(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
             //Ignoro qualunque altro messaggio
             else {
                 sent = 0;
-                printf("Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), acked, ntohs(recv_addr->sin_port));
+                printf("Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer_h, ntohs(util_addr.sin_port), acked, ntohs(recv_addr->sin_port));
             }
 
             FD_CLR(socket, readset_p);

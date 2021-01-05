@@ -12,39 +12,42 @@
 #include "../util/ack.h"
 #include "../util/util.h"
 
-#define MAX_IN 20   //Massima lunghezza comando da terminale
+#define MAX_IN 40   //Massima lunghezza comando da terminale
 #define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP
 #define DATE_LEN 10 //Lunghezza di una stringa contenente la data in formato dd:mm:yyyy
 #define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
 #define LIST_MAX_LEN 21 //Massima lunghezza lista di vicini
 #define SOCK_MAX_LEN 30
+#define MAX_COMMAND 6
+
+//Variabili
+int listener_socket;    //Descrittore del socket di ascolto
+struct sockaddr_in listener_addr;   //Struttura per gestire il socket di ascolto
+socklen_t listener_addr_len;
+
+int ret;    //Variabile di servizio
+char stdin_buff[MAX_IN];    //Buffer per i comandi da standard input
+char sock_buff[SOCK_MAX_LEN];
+
+//Variabili per collegarsi al server
+struct sockaddr_in server_addr;
+socklen_t server_addr_len;
+
+int started = 0; //Controlla se il peer e' gia' connesso al DS o no
+int neighbors[2];   //Da usare per salvarci i vicini
+
+//Variabili per gestire input da socket oppure da stdin
+fd_set master;
+fd_set readset;
+int fdmax;
+
 
 int main(int argc, char** argv){
-    //Variabili
-    //int port;   //Porta del socket di ascolto
-    int listener_socket;    //Descrittore del socket di ascolto
-    struct sockaddr_in listener_addr;   //Struttura per gestire il socket di ascolto
-    socklen_t listener_addr_len;
-    int ret;    //Variabile di servizio
-    char stdin_buff[MAX_IN];    //Buffer per i comandi da standard input
-    char sock_buff[SOCK_MAX_LEN];
-    int started = 0; //Controlla se il peer e' gia' connesso al DS o no
-    int neighbors[2];   //Da usare per salvarci i vicini
-    //Variabili per gestire input da socket oppure da stdin
-    fd_set master;
-    fd_set readset;
-    int fdmax;
-    //Variabili per collegarsi al server
-    struct sockaddr_in server_addr;
-    socklen_t addrlen;
-    
     //Pulizia set
     FD_ZERO(&master);
     FD_ZERO(&readset);
 
-
     //Creazione socket di ascolto
-    //port = atoi(argv[1]);
     listener_socket = prepare(&listener_addr, &listener_addr_len, atoi(argv[1]));
 
     //All'inizio nessun vicino
@@ -67,15 +70,18 @@ int main(int argc, char** argv){
         //Messaggio da stdin
         if(FD_ISSET(0, &readset)){
             //Richiede comando
-            scanf("%s", stdin_buff);
+            char command[MAX_COMMAND];
 
-            if(strcmp(stdin_buff,"help\0")==0){
+            fgets(stdin_buff, MAX_IN, stdin);
+            ret = sscanf(stdin_buff, "%s", command);
+
+            //Stampa comandi
+            if(strcmp(command,"help\0")==0){
                 comandi_client();
             }
 
-
             //Connessione al server
-            if(strcmp(stdin_buff,"start\0")==0){
+            if(strcmp(command,"start\0")==0){
                 //Variabili da prendere da stdin
                 char DS_addr[ADDR_LEN]; //Indirizzo IP del server
                 int DS_port; //Porta del server
@@ -84,85 +90,72 @@ int main(int argc, char** argv){
                 char temp_buffer[MESS_TYPE_LEN];
                 int temp_n[2];
                 int sscanf_ret;
-                struct timeval util_tv;
-                //Messaggio da inviare per collegarsi
-                char conn_req_buffer[MESS_TYPE_LEN+1] = "CONN_REQ\0";
-
+                int is_list;
 
                 //Richiesta dati DS
-                scanf("%s", DS_addr);
-                scanf("%d", &DS_port);
+                ret = sscanf(stdin_buff, "%s %s %d", command, DS_addr, &DS_port);
+                if(ret != 3){
+                    printf("Errore nel passaggio degli input alla chiamata di start\n");
+                    comandi_client();
+                    continue;
+                }
+                
                 //Controllo che la connessione non esista gia'
                 if(started == 1){
                     printf("Il peer e' gia' connesso al DS. Il comando non ha effetto\n");
                     continue;
                 }
                 
-                //Configurazione socket lato server
-                memset(&server_addr, 0, sizeof(server_addr));
-                server_addr.sin_family = AF_INET;
-                server_addr.sin_port = htons(DS_port);
-                inet_pton(AF_INET, DS_addr, &server_addr.sin_addr);
+                //Configurazione socket lato server (do per scontato che indirizzo sia 127.0.0.1)
+                clear_address(&server_addr, &server_addr_len, DS_port);
 
-                //Peer: prova a connettersi finche' non ci riesce
-                while(!started){
-                    addrlen = sizeof(server_addr);
-                    //Invio boot message
-                    do {
-                        ret = sendto(listener_socket, conn_req_buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&server_addr, addrlen);
-                        printf("Invio richiesta di connessione\n");
-                    } while(ret<0);
-                    
-                    //Mi preparo a ricevere un messaggio dal server
-                    FD_ZERO(&readset);
-                    FD_SET(listener_socket, &readset);
-                    //Imposto il timeout a 1 secondo
-                    util_tv.tv_sec = 1;
-                    util_tv.tv_usec = 0;
+                //Invio richiesta di connessione e attendo ACK
+                ack_1(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, &server_addr, server_addr_len, &readset, "CONN_ACK");
 
-                    printf("Sto aspettando la lista\n");
-                    //Aspetto la lista
-                    ret = select(listener_socket+1, &readset, NULL, NULL, &util_tv);
-                    //Appena la ricevo
-                    if(FD_ISSET(listener_socket, &readset)){
-                        //Ricevo lista di peer
-                        ret = recvfrom(listener_socket, recv_buffer, LIST_MAX_LEN, 0, (struct sockaddr*)&server_addr, &addrlen);
+                is_list = 0;
+                while(!is_list){
+                    struct sockaddr_in util_addr;
+                    socklen_t util_len;
+                    //Ricevo la lista e invio ACK
+                    ret = recvfrom(listener_socket, recv_buffer, LIST_MAX_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
+                    ret = sscanf(recv_buffer, "%s", temp_buffer);
+                    if(util_addr.sin_port == server_addr.sin_port && util_addr.sin_addr.s_addr == server_addr.sin_addr.s_addr && strcmp("NBR_LIST", temp_buffer) == 0){
+                        //Il peer ha ricevuto sicuramente la lista
+                        printf("Ho ricevuto %s da %d\n", recv_buffer, ntohs(util_addr.sin_port));
+                        is_list = 1;
+                    }                        
+                }
+
+                ack_2(listener_socket, "LIST_ACK", MESS_TYPE_LEN+1, &server_addr, server_addr_len, &readset, "NBR_LIST");
+
+                sscanf_ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
                         
-                        printf("Ricevuta lista di peer %s\n", recv_buffer);
-
-                        sscanf_ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
-                        
-                        //Se ho ricevuto effettivamente la lista
-                        if(strcmp("NBR_LIST", temp_buffer) == 0){
-                            //Controllo quanti vicini ho
-                            switch(sscanf_ret){
-                                case 1:
-                                    printf("Lista vuota, nessun vicino\n");
-                                    started = 1;
-                                    break;
-                                case 2:
-                                    printf("Un vicino con porta %d\n", temp_n[0]);
-                                    neighbors[0] = temp_n[0];
-                                    started = 1;
-                                    break;
-                                case 3:
-                                    printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
-                                    neighbors[0] = temp_n[0];
-                                    neighbors[1] = temp_n[1];
-                                    started = 1;
-                                    break;
-                                default:
-                                    printf("Problema nella trasmissione della lista\n");
-                            }
-                        }
-                        //Se arriva qualcosa di diverso dalla lista semplicemente si ignora
-
-                        FD_CLR(listener_socket, &readset);
+                //Se ho ricevuto effettivamente la lista
+                if(strcmp("NBR_LIST", temp_buffer) == 0){
+                    //Controllo quanti vicini ho
+                    switch(sscanf_ret){
+                        case 1:
+                            printf("Lista vuota, nessun vicino\n");
+                            started = 1;
+                            break;
+                        case 2:
+                            printf("Un vicino con porta %d\n", temp_n[0]);
+                            neighbors[0] = temp_n[0];
+                            started = 1;
+                            break;
+                        case 3:
+                            printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
+                            neighbors[0] = temp_n[0];
+                            neighbors[1] = temp_n[1];
+                            started = 1;
+                            break;
+                        default:
+                            printf("Problema nella trasmissione della lista\n");
                     }
                 }
             }
 
-            else if(strcmp(stdin_buff,"add\0")==0){
+            else if(strcmp(command,"add\0")==0){
                 //Dati da richiedere
                 int type;
                 int quantity;
@@ -184,7 +177,7 @@ int main(int argc, char** argv){
 
             }
 
-            else if(strcmp(stdin_buff,"get\0")==0){
+            else if(strcmp(command,"get\0")==0){
                 //Dati da richiedere
                 int aggr;
                 int type;
@@ -216,9 +209,7 @@ int main(int argc, char** argv){
                 }
             }
             
-            else if(strcmp(stdin_buff,"stop\0")==0){
-                char exit_buffer[MESS_TYPE_LEN] = "CLT_EXIT";
-                int exit_acked = 0;
+            else if(strcmp(command,"stop\0")==0){
                 printf("Hai digitato comando di stop\n");
 
                 //Controllo che la connessione esista
@@ -230,40 +221,7 @@ int main(int argc, char** argv){
 
                 //Gestisce i propri dati
 
-                //Esce
-                while(!exit_acked){
-                    struct timeval util_tv;
-                    char recv_buffer[MESS_TYPE_LEN];
-                    addrlen = sizeof(server_addr);
-                    //Invio exit message
-                    do {
-                        ret = sendto(listener_socket, exit_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&server_addr, addrlen);
-                    } while(ret<0);
-                    
-                    //Mi preparo a ricevere un ack dal server
-                    FD_ZERO(&readset);
-                    FD_SET(listener_socket, &readset);
-                    //Imposto il timeout a 1 secondo
-                    util_tv.tv_sec = 1;
-                    util_tv.tv_usec = 0;
-                    //Aspetto l'ack
-                    ret = select(fdmax+1, &readset, NULL, NULL, &util_tv);
-                    //Appena arriva qualcosa dal server
-                    if(FD_ISSET(listener_socket, &readset)){
-                        //Ricevo messaggio
-                        ret = recvfrom(listener_socket, recv_buffer, LIST_MAX_LEN, 0, (struct sockaddr*)&server_addr, &addrlen);
-                        //Se ho ricevuto effettivamente la lista
-                        if(strcmp("ACK_C_XT", recv_buffer) == 0){
-                            printf("Il server ha ricevuto correttamente l'informazione\n");
-                            exit_acked = 1;
-                        }
-
-                        //Se messaggio diverso, ignorato
-                    }
-
-                    //Se non arriva niente, si ricomincia il ciclo
-
-                }
+                ack_1(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, &server_addr, server_addr_len, &readset, "ACK_C_XT");
 
                 close(listener_socket);
                 _exit(0);
@@ -297,7 +255,11 @@ int main(int argc, char** argv){
                     int temp_n[2];
                     //Variabile di controllo
 
+                    printf("Parametri prima di sscanf: %d e %d\n", temp_n[0], temp_n[1]);
+
                     count = sscanf(sock_buff, "%s %d %d", mess_type_buff, &temp_n[0], &temp_n[1]);
+
+                    printf("Parametri dopo sscanf: %d e %d\n", temp_n[0], temp_n[1]);
                     
                     //Modifica ai vicini
                     switch(count){
@@ -345,7 +307,6 @@ int main(int argc, char** argv){
         }
 
         FD_CLR(listener_socket, &readset);
-
     
     }
 
