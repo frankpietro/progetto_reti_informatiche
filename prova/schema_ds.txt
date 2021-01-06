@@ -52,4 +52,4 @@ se informazioni da stdin {
         chiudo il socket
         esco
     }
-    }
+}

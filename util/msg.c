@@ -38,23 +38,45 @@ int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     return sock;
 }
 
-void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, socklen_t recv_l, char* unacked){
+int s_recv_UDP(int socket, char* buffer, int buff_l){
+    struct sockaddr_in send_addr;
+    socklen_t send_addr_len;
+
+    send_addr_len = sizeof(send_addr);
+
+    recvfrom(socket, buffer, buff_l, 0, (struct sockaddr*)&send_addr, &send_addr_len);
+
+    return ntohs(send_addr.sin_port);
+}
+
+/*
+    Utilizzo: inviare un ACK sfruttando protocollo UDP
+
+    socket: socket di chi invia
+    buffer: ACK da inviare
+    send_port: porta del mittente a cui inviare ACK
+    acked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
+*/
+void ack_UDP(int socket, char* buffer, int send_port, char* unacked){
     int received, ret;
+    struct sockaddr_in send_addr;
+    socklen_t send_addr_len;
     struct sockaddr_in util_addr;
     socklen_t util_len;
     char recv_buffer[MESS_TYPE_LEN];
     struct timeval util_tv;
     fd_set readset;
 
+    clear_address(&send_addr, &send_addr_len, send_port);
     received = 0;
     ret = 0;
     util_len = sizeof(util_addr);
 
-    printf("Inizio processo di ACK 2\n");
+    printf("Inizio processo di ACK\n");
 
     while(!received){
         do {
-            ret = sendto(socket, buffer, buff_l, 0, (struct sockaddr*)recv_addr, recv_l);
+            ret = sendto(socket, buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&send_addr, send_addr_len);
         } while(ret<0);
 
         //Attesa di mezzo secondo
@@ -70,9 +92,9 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
         //Se arriva qualcosa
         if(FD_ISSET(socket, &readset)){
             //Leggo cosa ho ricevuto
-            ret = recvfrom(socket, recv_buffer, MESS_TYPE_LEN, 0, (struct sockaddr*)&util_addr, &util_len);
+            ret = recvfrom(socket, recv_buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, &util_len);
             //Se ho ricevuto lo stesso identico messaggio
-            if(util_addr.sin_port == recv_addr->sin_port && util_addr.sin_addr.s_addr == recv_addr->sin_addr.s_addr && (strcmp(recv_buffer, unacked)==0)){
+            if(util_addr.sin_port == send_port && util_addr.sin_addr.s_addr == send_addr.sin_addr.s_addr && (strcmp(recv_buffer, unacked)==0)){
                 //Riinvio l'ack tornando a inizio while(!received)
                 received = 0;
                 break;
@@ -80,7 +102,7 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
             //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera') e considero arrivato correttamente l'altro
             else {
                 received = 1;
-                printf("Arrivato un messaggio %s da %d mentre atteso %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, recv_addr->sin_port);
+                printf("[A] Arrivato un messaggio %s inatteso da %d dopo l'invio di %s a %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, send_port);
             }
 
             FD_CLR(socket, &readset);
@@ -90,18 +112,29 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
             received = 1;
     }
 
-    printf("Messaggio ricevuto correttamente\n");
+    printf("ACK %s inviato correttamente al destinatario %d\n", buffer, send_port);
 }
 
-void recv_ack(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, socklen_t recv_l, char* acked){
+/*
+    Utilizzo: inviare un messaggio sfruttando protocollo UDP
+
+    socket: socket di chi invia
+    buffer: messaggio da inviare
+    buff_l: lunghezza del messaggio da inviare
+    recv_port: porta del destinatario del messaggio
+    acked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
+*/
+void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
     int sent,ret;
+    struct sockaddr_in recv_addr;
+    socklen_t recv_addr_len;
     struct sockaddr_in util_addr;
     socklen_t util_len;
-    char recv_buffer[MAX_RECV];
     char recv_buffer_h[MESS_TYPE_LEN+1];
     struct timeval util_tv;
     fd_set readset;
 
+    clear_address(&recv_addr, &recv_addr_len, recv_port);
     sent = 0;
     ret = 0;
     util_len = sizeof(util_addr);
@@ -110,7 +143,7 @@ void recv_ack(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_add
     while(!sent){
         //Invio lista
         do {
-            ret = sendto(socket, buffer, buff_l, 0, (struct sockaddr*)recv_addr, recv_l);
+            ret = sendto(socket, buffer, buff_l, 0, (struct sockaddr*)&recv_addr, recv_addr_len);
         } while(ret<0);
         
         //Mi preparo a ricevere un messaggio dal peer
@@ -125,68 +158,42 @@ void recv_ack(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_add
         //Appena la ricevo
         if(FD_ISSET(socket, &readset)){
             //Ricevo ack
-            ret = recvfrom(socket, recv_buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, &util_len);
-
-            ret = sscanf(recv_buffer, "%s", recv_buffer_h);
+            ret = recvfrom(socket, recv_buffer_h, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, &util_len);
             
             //Se ho ricevuto effettivamente l'ack
-            if(util_addr.sin_port == recv_addr->sin_port && util_addr.sin_addr.s_addr == recv_addr->sin_addr.s_addr && strcmp(acked, recv_buffer_h) == 0){
+            if(util_addr.sin_port == recv_addr.sin_port && util_addr.sin_addr.s_addr == recv_addr.sin_addr.s_addr && strcmp(acked, recv_buffer_h) == 0){
                 //Il messaggio e' stato sicuramente ricevuto
-                printf("Ho ricevuto %s da %d\n", recv_buffer, ntohs(util_addr.sin_port));
+                printf("ACK %s ricevuto correttamente dal mittente %d\n", recv_buffer_h, ntohs(util_addr.sin_port));
                 sent = 1;
             }
             //Ignoro qualunque altro messaggio
             else {
                 sent = 0;
-                printf("Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer_h, ntohs(util_addr.sin_port), acked, ntohs(recv_addr->sin_port));
+                printf("[S] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer_h, ntohs(util_addr.sin_port), acked, ntohs(recv_addr.sin_port));
             }
 
             FD_CLR(socket, &readset);
         }
     }
 
-    printf("Messaggio inviato correttamente\n");
+    printf("Messaggio %s inviato correttamente al destinatario %d\n", buffer, recv_port);
 }
 
 /*
-    Utilizzo: quando viene inviato il primo messaggio di uno scambio UDP
+    Utilizzo: ricevere un messaggio sfruttando protocollo UDP
 
-    socket: socket di chi invia
-    buffer: messaggio da inviare
-    buff_l: lunghezza del messaggio da inviare
-    recv_port: porta del processo che deve ricevere il messaggio
-    acked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
+    socket: socket di chi riceve
+    buffer: messaggio da ricevere
+    buff_l: lunghezza del messaggio da ricevere
+    send_port: porta del mittente del messaggio
+    correct_header: header del messaggio che mi aspetto di ricevere
+    ack_type: messaggio di ACK da inviare al mittente
 */
-void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
-    struct sockaddr_in recv_addr;
-    socklen_t recv_addr_len;
-
-    clear_address(&recv_addr, &recv_addr_len, recv_port);
-
-    recv_ack(socket, buffer,buff_l, &recv_addr, recv_addr_len, acked);
-}
-
-/*
-    Utilizzo: quando viene inviato il secondo messaggio di uno scambio UDP
-
-    socket: socket di chi invia
-    buffer: messaggio da inviare
-    buff_l: lunghezza del messaggio da inviare
-    port: porta del processo a cui inviare ack
-    unacked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che non ci sia un doppio invio
-*/
-void ack(int socket, char* buffer, int buff_l, int port, char* unacked){
-    struct sockaddr_in recv_addr;
-    socklen_t recv_addr_len;
-    clear_address(&recv_addr, &recv_addr_len, port);
-    ack_2(socket, buffer, buff_l, &recv_addr, recv_addr_len, unacked);
-}
-
-//Funzione per ricevere messaggi all'interno di una funzione
-int recv_UDP(int socket, char* buffer, int buff_l){
+void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct_header, char* ack_type){
     struct sockaddr_in send_addr;
     socklen_t send_addr_len;
     int ok;
+    char temp_buffer[MESS_TYPE_LEN];
     struct timeval util_tv;
     fd_set readset;
 
@@ -208,21 +215,19 @@ int recv_UDP(int socket, char* buffer, int buff_l){
         if(FD_ISSET(socket, &readset)){
             //Leggo cosa ho ricevuto
             recvfrom(socket, buffer, buff_l, 0, (struct sockaddr*)&send_addr, &send_addr_len);
-            ok = 1;
+            sscanf(buffer, "%s", temp_buffer);
+            if(ntohs(send_addr.sin_port) == send_port && strcmp(correct_header, temp_buffer) == 0){
+                //Il peer ha ricevuto sicuramente la lista
+                printf("Messaggio %s ricevuto correttamente dal mittente %d\n", buffer, send_port);
+                ok = 1;
+            }
+            else {
+                printf("[R] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", temp_buffer, ntohs(send_addr.sin_port), correct_header, send_port);
+            }
+
             FD_CLR(socket, &readset);
         }
     }
 
-    return ntohs(send_addr.sin_port);
-}
-
-int s_recv_UDP(int socket, char* buffer, int buff_l){
-    struct sockaddr_in send_addr;
-    socklen_t send_addr_len;
-
-    send_addr_len = sizeof(send_addr);
-
-    recvfrom(socket, buffer, buff_l, 0, (struct sockaddr*)&send_addr, &send_addr_len);
-
-    return ntohs(send_addr.sin_port);
+    ack_UDP(socket, ack_type, send_port, correct_header);
 }

@@ -131,7 +131,6 @@ int main(int argc, char** argv){
                     char recv_buffer[LIST_MAX_LEN];
                     char temp_buffer[MESS_TYPE_LEN];
                     int temp_n[2];
-                    int is_list;
                     
                     retrieve_time();
                     //Controllo che la connessione non esista gia'
@@ -151,20 +150,7 @@ int main(int argc, char** argv){
                     //Invio richiesta di connessione e attendo ACK
                     send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, server_port, "CONN_ACK");
 
-                    is_list = 0;
-                    while(!is_list){
-                        int util_port;
-                        //Ricevo la lista e invio ACK
-                        util_port = recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN);
-                        sscanf(recv_buffer, "%s", temp_buffer);
-                        if(util_port == server_port && strcmp("NBR_LIST", temp_buffer) == 0){
-                            //Il peer ha ricevuto sicuramente la lista
-                            printf("Ho ricevuto %s da %d\n", recv_buffer, util_port);
-                            is_list = 1;
-                        }                        
-                    }
-
-                    ack(listener_socket, "LIST_ACK", MESS_TYPE_LEN+1, server_port, "NBR_LIST");
+                    recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "NBR_LIST", "LIST_ACK");
 
                     ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
                             
@@ -302,7 +288,9 @@ int main(int argc, char** argv){
                         //Numero di nuovi neighbor
                         int count;
                         int temp_n[2];
-                        //Variabile di controllo
+                        
+                        temp_n[0] = -1;
+                        temp_n[1] = -1;
 
                         printf("Parametri prima di sscanf: %d e %d\n", temp_n[0], temp_n[1]);
 
@@ -334,7 +322,7 @@ int main(int argc, char** argv){
                         }
 
                         //Invio ACK
-                        ack(listener_socket, "CHNG_ACK", MESS_TYPE_LEN+1, server_port, "NBR_UPDT");
+                        ack_UDP(listener_socket, "CHNG_ACK", server_port, "NBR_UPDT");
                     }
                 
                     //Notifica chiusura server
@@ -344,7 +332,7 @@ int main(int argc, char** argv){
                         //Fa qualcosa coi dati
 
                         //Invia ACK
-                        ack(listener_socket, "ACK_S_XT", MESS_TYPE_LEN+1, server_port, "SRV_EXIT");
+                        ack_UDP(listener_socket, "ACK_S_XT", server_port, "SRV_EXIT");
 
                         //Chiude
                         printf("Chiusura peer\n");

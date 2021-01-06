@@ -36,7 +36,7 @@ se informazioni da stdin {
         controllo che i dati siano corretti
         aggiorno l'orario
         inserisco l'entry in un file chiamato <data>_<porta>.txt
-        invio messaggio di nuova entry al server
+        invio messaggio del tipo giusto di nuova entry al server
     }
     se get {
         //

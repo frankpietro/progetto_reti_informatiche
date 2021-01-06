@@ -62,9 +62,7 @@ int main(int argc, char** argv){
         select(fdmax+1, &readset, NULL, NULL, NULL);
 
 
-        if(FD_ISSET(server_socket, &readset)){
-            printf("Arrivato messaggio sul socket\n");
-            
+        if(FD_ISSET(server_socket, &readset)){            
             //Variabili per salvare porta e indirizzo
             char peer_addr_buff[INET_ADDRSTRLEN];
             int peer_port;
@@ -73,6 +71,8 @@ int main(int argc, char** argv){
             peer_port = s_recv_UDP(server_socket, recv_buffer, MESS_TYPE_LEN);
 
             recv_buffer[MESS_TYPE_LEN] = '\0';
+
+            printf("Arrivato messaggio %s da %d sul socket\n", recv_buffer, peer_port);
 
             //Messaggi che puo' ricevere il server: richiesta di connessione o di abbandono
 
@@ -84,9 +84,7 @@ int main(int argc, char** argv){
                 char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
                 
                 //Ack dell'arrivo della richiesta
-                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
-
-                printf("Arrivata richiesta di connessione dal peer %d\n", peer_port); 
+                ack_UDP(server_socket, "CONN_ACK", peer_port, "CONN_REQ");
                 
                 //Inserisco il peer nella lista
                 if(!isIn(peer_port)){
@@ -100,7 +98,8 @@ int main(int argc, char** argv){
 
                 //Preparazione lista
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
-                printf("Vicini: %d e %d\n", temp_port[0], temp_port[1]);
+                printf("Vicini di %d: %d e %d\n", peer_port, temp_port[0], temp_port[1]);
+
                 //Compongo la lista
                 if(temp_port[0] == -1 && temp_port[1] == -1)
                     n = sprintf(list_buffer, "%s", "NBR_LIST");
@@ -110,7 +109,7 @@ int main(int argc, char** argv){
                     n = sprintf(list_buffer, "%s %d %d", "NBR_LIST", temp_port[0], temp_port[1]);
 
                 // DEBUG
-                printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
+                printf("Lista da inviare a %d: %s (lunga %d byte)\n", peer_port, list_buffer, n);
 
 
                 //Invio
@@ -140,7 +139,7 @@ int main(int argc, char** argv){
                 char list_update[LIST_MAX_LEN];
                 int n;
 
-                ack(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, peer_port, "CLT_EXIT");
+                ack_UDP(server_socket, "ACK_C_XT", peer_port, "CLT_EXIT");
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
 
                 //Se il peer per qualche motivo non e' in lista non faccio nulla
@@ -181,12 +180,12 @@ int main(int argc, char** argv){
             }
 
             if(strcmp(recv_buffer, "NEW_TEST") == 0){
-                ack(server_socket, "ACK_TEST", MESS_TYPE_LEN+1, peer_port, "NEW_TEST");
+                ack_UDP(server_socket, "ACK_TEST", peer_port, "NEW_TEST");
                 add_entry(0);
             }
 
             if(strcmp(recv_buffer, "NEW_CASE") == 0){
-                ack(server_socket, "ACK_CASE", MESS_TYPE_LEN+1, peer_port, "NEW_CASE");
+                ack_UDP(server_socket, "ACK_CASE", peer_port, "NEW_CASE");
                 add_entry(1);
             }
 
