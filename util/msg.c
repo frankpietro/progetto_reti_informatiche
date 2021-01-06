@@ -80,7 +80,7 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
             //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera') e considero arrivato correttamente l'altro
             else {
                 received = 1;
-                printf("Arrivato un messaggio %s inatteso, scartato\n", recv_buffer);
+                printf("Arrivato un messaggio %s da %d mentre atteso %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, recv_addr->sin_port);
             }
 
             FD_CLR(socket, &readset);

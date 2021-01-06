@@ -193,14 +193,24 @@ int main(int argc, char** argv){
             
             fgets(command_buffer, MAX_COMMAND, stdin);
             input_number = sscanf(command_buffer, "%s %d", command, &neighbor_peer);
+            
+            /*
+                HELP
+            */
             if(strcmp(command,"help\0")==0){
                 comandi_server();
             }
 
+            /*
+                SHOWPEERS
+            */
             else if(strcmp(command,"showpeers\0")==0){
                 print_peers(connected_peers);
             }
 
+            /*
+                SHOWNEIGHBOR
+            */
             else if(strcmp(command,"showneighbor\0")==0){
                 if(connected_peers == 0)
                     printf("Nessun peer connesso\n");
@@ -210,8 +220,10 @@ int main(int argc, char** argv){
                     print_all_neighbors(connected_peers);
             }
             
+            /*
+                ESC
+            */
             else if(strcmp(command,"esc\0")==0){
-                int removed = 0;
                 //Invia a tutti i peer un messaggio
                 int i;
                 //DEBUG
@@ -220,7 +232,6 @@ int main(int argc, char** argv){
                     //Invia al peer il messaggio di exit
                     printf("Invio SRV_EXIT a %d\n", get_port(i));
                     send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN+1, get_port(i), "ACK_S_XT");
-                    removed++;
                 }
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)
                 connected_peers = 0;
@@ -231,6 +242,9 @@ int main(int argc, char** argv){
                 _exit(0);
             }
             
+            /*
+                Errore
+            */
             else {
                 printf("Errore, comando non esistente\n");
             }

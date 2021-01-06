@@ -19,6 +19,10 @@ se informazioni dal socket {
     se da un vicino {
 
     }
+    se data e ora {
+        aggiorna data e ora
+        invi
+    }
 }
 
 se informazioni da stdin {
