@@ -36,9 +36,6 @@ fd_set master;
 fd_set readset;
 int fdmax;
 
-//Gestione delle entries
-int entries;
-
 int main(int argc, char** argv){
     //Pulizia set
     FD_ZERO(&master);
@@ -49,9 +46,6 @@ int main(int argc, char** argv){
     
     //All'inizio nessun peer connesso
     connected_peers = 0;
-
-    //All'inizio nessuna entry
-    entries = 0;
 
     //Inizializzo set di descrittori
     FD_SET(server_socket, &master);
@@ -186,10 +180,14 @@ int main(int argc, char** argv){
                 
             }
 
-            if(strcmp(recv_buffer, "NEW_ENTR") == 0){
-                ack(server_socket, "ACK_ENTR", MESS_TYPE_LEN+1, peer_port, "NEW_ENTR");
-                entries++;
-                printf("Numero di entries giornaliere: %d\n", entries);
+            if(strcmp(recv_buffer, "NEW_TEST") == 0){
+                ack(server_socket, "ACK_TEST", MESS_TYPE_LEN+1, peer_port, "NEW_TEST");
+                add_entry(0);
+            }
+
+            if(strcmp(recv_buffer, "NEW_CASE") == 0){
+                ack(server_socket, "ACK_CASE", MESS_TYPE_LEN+1, peer_port, "NEW_CASE");
+                add_entry(1);
             }
 
             FD_CLR(server_socket, &readset);

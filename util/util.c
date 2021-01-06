@@ -14,6 +14,7 @@
 #define LOCALHOST "127.0.0.1"
 #define DATE_LEN 10
 #define TIME_LEN 8
+#define MAX_FILENAME_LEN 22
 
 char current_d[DATE_LEN+1];
 char current_t[TIME_LEN+1];
@@ -54,4 +55,33 @@ void retrieve_time(){
     current_d[DATE_LEN] = '\0';
     sprintf(current_t, "%02d:%02d:%02d", now_tm->tm_hour, now_tm->tm_min, now_tm->tm_sec);
     current_t[TIME_LEN] = '\0';
+}
+
+//0: tampone; 1: nuovo caso
+void add_entry(int type){
+    FILE *fd1, *fd2;
+    int entries[2];
+    char filename[MAX_FILENAME_LEN+1];
+    retrieve_time();
+    sprintf(filename, "%s_%s", current_d, "entries.txt");
+    
+    fd1 = fopen(filename, "r");
+    if(fd1 == NULL){
+        fd2 = fopen(filename, "w");
+        entries[type] = 1;
+        entries[(type+1)%2] = 0;
+        fprintf(fd2, "%d %d", entries[0], entries[1]);
+        fclose(fd2);
+        return;
+    }
+    else {
+        fd2 = fopen("temp_entries.txt", "w");
+        fscanf(fd1, "%d %d", &entries[0], &entries[1]);
+        entries[type]++;
+        fprintf(fd2, "%d %d", entries[0], entries[1]);
+        fclose(fd1);
+        fclose(fd2);
+        remove(filename);
+        rename("temp_entries.txt", filename);
+    }
 }

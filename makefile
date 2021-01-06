@@ -26,5 +26,6 @@ all: ./ds_dir/ds ./peer_1_dir/peer
 
 clean:
 	rm ./ds_dir/*.o ./ds_dir/ds ./peer_1_dir/*.o ./peer_1_dir/peer ./util/*.o
+	-mv ./ds_dir/2021* ./logs
 	-rm ./ds_dir/*.txt
 	-mv ./peer_1_dir/*.txt ./logs

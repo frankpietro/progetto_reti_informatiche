@@ -13,7 +13,7 @@
 
 #include "../util/msg.h"
 #include "../util/util.h"
-//Gestione del file con i peer
+//Gestione del file con le entries
 #include "../util/entries.h"
 
 #define MAX_IN 40   //Massima lunghezza comando da terminale
@@ -212,7 +212,10 @@ int main(int argc, char** argv){
                     retrieve_time();
                     insert_entry(type, quantity);
 
-                    send_UDP(listener_socket, "NEW_ENTR", MESS_TYPE_LEN+1, server_port, "ACK_ENTR");
+                    if(type == 't')
+                        send_UDP(listener_socket, "NEW_TEST", MESS_TYPE_LEN+1, server_port, "ACK_TEST");
+                    else
+                        send_UDP(listener_socket, "NEW_CASE", MESS_TYPE_LEN+1, server_port, "ACK_CASE");
 
                 }
 

@@ -30,7 +30,7 @@ void insert_entry(char type, int quantity){
     printf("Filename: %s\n", filename);
 
     fd = fopen(filename, "a");
-    fprintf(fd, "%s %c %d %d %d\n", current_t, type, quantity, my_port, my_port);
+    fprintf(fd, "%s %c %d %d\n", current_t, type, quantity, my_port);
     fclose(fd);
 
     printf("Entry inserita!\n");

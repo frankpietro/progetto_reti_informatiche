@@ -57,9 +57,9 @@ void ack_2(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_addr, 
             ret = sendto(socket, buffer, buff_l, 0, (struct sockaddr*)recv_addr, recv_l);
         } while(ret<0);
 
-        //Attesa di un secondo
-        util_tv.tv_sec = 1;
-        util_tv.tv_usec = 0;
+        //Attesa di mezzo secondo
+        util_tv.tv_sec = 0;
+        util_tv.tv_usec = 500000;
         //Mi metto per un secondo solo in ascolto sul socket
         //Solo in ascolto di un'eventuale copia del messaggio
         FD_ZERO(&readset);
@@ -116,10 +116,10 @@ void recv_ack(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_add
         //Mi preparo a ricevere un messaggio dal peer
         FD_ZERO(&readset);
         FD_SET(socket, &readset);
-        //Imposto il timeout a un secondo
-        util_tv.tv_sec = 1;
-        util_tv.tv_usec = 0;
-        //Aspetto la lista
+        //Imposto il timeout a mezzo secondo
+        util_tv.tv_sec = 0;
+        util_tv.tv_usec = 500000;
+        //Aspetto l'ack
         ret = select(socket+1, &readset, NULL, NULL, &util_tv);
 
         //Appena la ricevo
@@ -131,7 +131,7 @@ void recv_ack(int socket, char* buffer, int buff_l, struct sockaddr_in* recv_add
             
             //Se ho ricevuto effettivamente l'ack
             if(util_addr.sin_port == recv_addr->sin_port && util_addr.sin_addr.s_addr == recv_addr->sin_addr.s_addr && strcmp(acked, recv_buffer_h) == 0){
-                //Il peer ha ricevuto sicuramente la lista
+                //Il messaggio e' stato sicuramente ricevuto
                 printf("Ho ricevuto %s da %d\n", recv_buffer, ntohs(util_addr.sin_port));
                 sent = 1;
             }
@@ -194,11 +194,11 @@ int recv_UDP(int socket, char* buffer, int buff_l){
     send_addr_len = sizeof(send_addr);
 
     while(!ok){
-        //Attesa di un secondo
-        util_tv.tv_sec = 1;
-        util_tv.tv_usec = 0;
+        //Attesa di mezzo secondo
+        util_tv.tv_sec = 0;
+        util_tv.tv_usec = 500000;
         //Mi metto per un secondo solo in ascolto sul socket
-        //Solo in ascolto di un'eventuale copia del messaggio di boot
+        //Solo in ascolto di un'eventuale copia del messaggio
         FD_ZERO(&readset);
         FD_SET(socket, &readset);
             
