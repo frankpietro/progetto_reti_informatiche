@@ -95,9 +95,6 @@ int main(int argc, char** argv){
                     }
                 }
 
-                //Ack dell'arrivo della richiesta
-                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
-
                 //Preparazione lista
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
                 printf("Vicini: %d e %d\n", temp_port[0], temp_port[1]);
@@ -112,6 +109,9 @@ int main(int argc, char** argv){
                 // DEBUG
                 printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
 
+
+                //Ack dell'arrivo della richiesta
+                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
                 //Invio
                 send_UDP(server_socket, list_buffer, n+1, peer_port, "LIST_ACK");
 
