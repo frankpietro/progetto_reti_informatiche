@@ -4,8 +4,8 @@ select per monitorare arrivo informazioni
 se informazioni dal socket {
     ricevo e leggo pacchetto UDP
     se richiesta di connessione {
-        invio ack
         aggiungo il peer alla lista di peer connessi
+        invio ack
         se primo peer {
             gli invio una lista vuota
         }
@@ -22,6 +22,7 @@ se informazioni dal socket {
         aggiorno numero peer connessi
     }
     se richiesta di uscita {
+        invio ack
         se ultimo peer
             cancello file peer connessi
         altrimenti {
@@ -32,7 +33,6 @@ se informazioni dal socket {
                 la invio
             }
         }
-        invio ack
     }
 }
 

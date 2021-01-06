@@ -36,6 +36,9 @@ fd_set master;
 fd_set readset;
 int fdmax;
 
+//Gestione delle entries
+int entries;
+
 int main(int argc, char** argv){
     //Pulizia set
     FD_ZERO(&master);
@@ -46,6 +49,9 @@ int main(int argc, char** argv){
     
     //All'inizio nessun peer connesso
     connected_peers = 0;
+
+    //All'inizio nessuna entry
+    entries = 0;
 
     //Inizializzo set di descrittori
     FD_SET(server_socket, &master);
@@ -83,6 +89,9 @@ int main(int argc, char** argv){
                 int n; //Variabile per la lunghezza del messaggio da inviare al peer             
                 char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
                 
+                //Ack dell'arrivo della richiesta
+                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
+
                 printf("Arrivata richiesta di connessione dal peer %d\n", peer_port); 
                 
                 //Inserisco il peer nella lista
@@ -110,8 +119,6 @@ int main(int argc, char** argv){
                 printf("List buffer: %s (lungo %d byte)\n", list_buffer, n);
 
 
-                //Ack dell'arrivo della richiesta
-                ack(server_socket, "CONN_ACK", MESS_TYPE_LEN+1, peer_port, "CONN_REQ");
                 //Invio
                 send_UDP(server_socket, list_buffer, n+1, peer_port, "LIST_ACK");
 
@@ -139,6 +146,7 @@ int main(int argc, char** argv){
                 char list_update[LIST_MAX_LEN];
                 int n;
 
+                ack(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, peer_port, "CLT_EXIT");
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
 
                 //Se il peer per qualche motivo non e' in lista non faccio nulla
@@ -174,10 +182,14 @@ int main(int argc, char** argv){
 
                 }
 
-                ack(server_socket, "ACK_C_XT", MESS_TYPE_LEN+1, peer_port, "CLT_EXIT");
-
                 connected_peers--;
                 
+            }
+
+            if(strcmp(recv_buffer, "NEW_ENTR") == 0){
+                ack(server_socket, "ACK_ENTR", MESS_TYPE_LEN+1, peer_port, "NEW_ENTR");
+                entries++;
+                printf("Numero di entries giornaliere: %d\n", entries);
             }
 
             FD_CLR(server_socket, &readset);

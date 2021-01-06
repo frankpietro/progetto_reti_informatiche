@@ -19,10 +19,6 @@ se informazioni dal socket {
     se da un vicino {
 
     }
-    se data e ora {
-        aggiorna data e ora
-        invi
-    }
 }
 
 se informazioni da stdin {
@@ -36,7 +32,11 @@ se informazioni da stdin {
 
     }
     se add {
-        //
+        controllo che il peer sia connesso
+        controllo che i dati siano corretti
+        aggiorno l'orario
+        inserisco l'entry in un file chiamato <data>_<porta>.txt
+        invio messaggio di nuova entry al server
     }
     se get {
         //

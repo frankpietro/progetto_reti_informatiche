@@ -1,0 +1,1 @@
+void insert_entry(char,int);

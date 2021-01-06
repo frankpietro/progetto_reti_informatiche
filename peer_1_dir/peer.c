@@ -13,6 +13,8 @@
 
 #include "../util/msg.h"
 #include "../util/util.h"
+//Gestione del file con i peer
+#include "../util/entries.h"
 
 #define MAX_IN 40   //Massima lunghezza comando da terminale
 #define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP
@@ -23,8 +25,11 @@
 #define LIST_MAX_LEN 21 //Massima lunghezza lista di vicini
 #define SOCK_MAX_LEN 30
 #define MAX_COMMAND 6
+#define MAX_FILENAME_LEN 20
+#define MAX_ENTRY_LEN 50
 
 //Variabili
+int my_port;
 int listener_socket;    //Descrittore del socket di ascolto
 struct sockaddr_in listener_addr;   //Struttura per gestire il socket di ascolto
 socklen_t listener_addr_len;
@@ -47,9 +52,10 @@ fd_set readset;
 int fdmax;
 
 //Variabili temporali
-extern char current_d[DATE_LEN];
-extern char current_t[TIME_LEN];
-int pid;
+extern char current_d[DATE_LEN+1];
+extern char current_t[TIME_LEN+1];
+pid_t pid;
+
 
 int main(int argc, char** argv){
     /*pid = fork();
@@ -69,12 +75,15 @@ int main(int argc, char** argv){
     }
 
     else {*/
+        retrieve_time();
         //Pulizia set
         FD_ZERO(&master);
         FD_ZERO(&readset);
 
+        my_port = atoi(argv[1]);
+
         //Creazione socket di ascolto
-        listener_socket = prepare(&listener_addr, &listener_addr_len, atoi(argv[1]));
+        listener_socket = prepare(&listener_addr, &listener_addr_len, my_port);
 
         //All'inizio nessun vicino
         neighbors[0] = 0;
@@ -85,7 +94,6 @@ int main(int argc, char** argv){
 
         //Stampa elenco comandi
         comandi_client();
-        signal(SIGUSR1, retrieve_time);
 
         FD_SET(listener_socket, &master);
         FD_SET(0, &master);
@@ -109,7 +117,6 @@ int main(int argc, char** argv){
                     HELP
                 */
                 if(strcmp(command,"help")==0){
-                    retrieve_time();
                     printf("Data: %s; ora: %s\n", current_d, current_t);
                     comandi_client();
                 }
@@ -126,6 +133,7 @@ int main(int argc, char** argv){
                     int temp_n[2];
                     int is_list;
                     
+                    retrieve_time();
                     //Controllo che la connessione non esista gia'
                     if(server_port != -1){
                         printf("Il peer e' gia' connesso al DS. Il comando non ha effetto\n");
@@ -189,15 +197,23 @@ int main(int argc, char** argv){
                     char type;
                     int quantity;
 
+                    //Se peer non connesso non faccio nulla
+                    if(server_port == -1){
+                        printf("Peer non connesso\n");
+                        continue;
+                    }
+
                     ret = sscanf(stdin_buff, "%s %c %d", command, &type, &quantity);
                     if(!(type == 't' || type == 'n') || ret != 3 || quantity < 1){
                         printf("Errore nell'inserimento dei dati\n");
                         continue;
                     }
-                    printf("Tipo: %c; quantita': %d\n", type, quantity);
+                    
+                    retrieve_time();
+                    insert_entry(type, quantity);
 
-                    //Ora di adesso
-                    printf("Oggi: %s; orario: %s\n", current_d, current_t);
+                    send_UDP(listener_socket, "NEW_ENTR", MESS_TYPE_LEN+1, server_port, "ACK_ENTR");
+
                 }
 
                 /*
