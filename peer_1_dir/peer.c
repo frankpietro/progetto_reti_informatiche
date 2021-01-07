@@ -146,6 +146,8 @@ int main(int argc, char** argv){
                         comandi_client();
                         continue;
                     }
+
+                    server_port %= 65536;
                     
                     //Invio richiesta di connessione e attendo ACK
                     send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, server_port, "CONN_ACK");
@@ -209,35 +211,30 @@ int main(int argc, char** argv){
                     GET
                 */
                 else if(strcmp(command,"get")==0){
-    /*                //Dati da richiedere
-                    int aggr;
-                    int type;
-                    char period1[DATE_LEN];
-                    char period2[DATE_LEN];
-
-                    printf("Tipo di aggregazione (0: totale; 1: variazione): ");
-                    do{
-                        scanf("%d", &aggr);
-                        if(aggr != 0 && aggr != 1)
-                            printf("Input non valido, inserisci di nuovo: ");
-                    } while (aggr != 0 && aggr != 1);
-
-                    printf("Tipo di dato (0: tamponi; 1: nuovi casi): ");
-                    do{
-                        scanf("%d", &type);
-                        if(type != 0 && type != 1)
-                            printf("Input non valido, inserisci di nuovo: ");
-                    } while (type != 0 && type != 1);
-
-                    printf("Data di inizio in formato dd:mm:yyyy\n(inserire 'a' se si vuole tutto il periodo di monitoraggio, inserire * se non si vuole lower bound): ");
-                    scanf("%s", period1);
-                    if(strcmp(period1, "a\0") == 0){
-                        //Elaborazione senza limiti temporali
+                    //int date[2][3];
+                    char aggr;
+                    char type;
+                    char bounds[2][DATE_LEN];
+                    
+                    ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bounds[0], bounds[1]);
+                    //Numero di parametri
+                    if(!(ret == 3 || ret == 5)){
+                        printf("Errore nel numero di parametri passati\n");
+                        continue;
                     }
-                    else {
-                        printf("Data di fine in formato dd:mm:yyyy\n(inserire * se non si vuole upper bound): ");
-                        scanf("%s", period2);
-                    }*/
+                    //Controllo su aggr e type
+                    if(!((aggr == 't' || aggr == 'v') && (type == 't' || type == 'n'))){
+                        printf("Errore nell'inserimento della richiesta\n");
+                        continue;
+                    }
+                    //Controllo sulle date
+                    if(ret == 5){
+                        if(!check_dates(bounds[0], bounds[1], aggr))
+                            continue;
+                    }
+
+                    printf("Controlli superati!\n");
+
                 }
                 
                 /*
