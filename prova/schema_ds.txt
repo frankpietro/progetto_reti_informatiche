@@ -34,6 +34,11 @@ se informazioni dal socket {
             }
         }
     }
+    se richiesta numero entries {
+        invio ack
+        cerco il numero da inviare
+        invio risposta con il numero
+    }
 }
 
 se informazioni da stdin {

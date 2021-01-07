@@ -39,7 +39,9 @@ se informazioni da stdin {
         invio messaggio del tipo giusto di nuova entry al server
     }
     se get {
-        //
+        controlla gli input
+        invia richiesta numero entries del giorno al server
+        riceve numero entries del giorno
     }
     se stop {
         //Gestisce i dati

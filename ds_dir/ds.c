@@ -20,6 +20,9 @@
 #define MESS_TYPE_LEN 8
 #define LIST_MAX_LEN 21
 #define LOCALHOST "127.0.0.1"
+#define MAX_CONNECTED_PEERS 100
+#define SOCK_MAX_LEN 30
+#define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
 
 //Variabili
 int server_socket;  //Socket su cui il server riceve messaggi dai peer
@@ -27,6 +30,7 @@ struct sockaddr_in server_addr;     //Struttura per gestire il socket
 socklen_t server_len;
 
 char command_buffer[MAX_COMMAND];   //Buffer su cui salvare i comandi provenienti da stdin
+char socket_buffer[SOCK_MAX_LEN];
 char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
 
 int connected_peers;    //Numero di peers connessi alla rete
@@ -68,8 +72,8 @@ int main(int argc, char** argv){
             int peer_port;
             
             //Ricezione richieste di connessione
-            peer_port = s_recv_UDP(server_socket, recv_buffer, MESS_TYPE_LEN);
-
+            peer_port = s_recv_UDP(server_socket, socket_buffer, SOCK_MAX_LEN);
+            sscanf(socket_buffer, "%s", recv_buffer);
             recv_buffer[MESS_TYPE_LEN] = '\0';
 
             printf("Arrivato messaggio %s da %d sul socket\n", recv_buffer, peer_port);
@@ -120,26 +124,27 @@ int main(int argc, char** argv){
                     //Preparo la struttura che devo tirare su
                     get_list(temp_port[0], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
-                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[0], "CHNG_ACK");
+                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[0], "UPDT_ACK");
                 }
 
                 if(temp_port[1] != -1){
                     get_list(temp_port[1], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
-                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[1], "CHNG_ACK");
+                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[1], "UPDT_ACK");
                 }
 
                 //Incremento il numero di peer
                 connected_peers++;
             }
 
+            //Richiesta di uscita
             if(strcmp(recv_buffer, "CLT_EXIT") == 0){
                 //Variabili per salvare informazioni temporanee
                 int temp_nbr_port[2];
                 char list_update[LIST_MAX_LEN];
                 int n;
 
-                ack_UDP(server_socket, "ACK_C_XT", peer_port, "CLT_EXIT");
+                ack_UDP(server_socket, "C_XT_ACK", peer_port, "CLT_EXIT");
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
 
                 //Se il peer per qualche motivo non e' in lista non faccio nulla
@@ -165,12 +170,12 @@ int main(int argc, char** argv){
                 else {
                     get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
                     printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[0], list_update);
-                    send_UDP(server_socket, list_update, n+1, temp_nbr_port[0], "CHNG_ACK");
+                    send_UDP(server_socket, list_update, n+1, temp_nbr_port[0], "UPDT_ACK");
                     
                     if(temp_nbr_port[1] != -1){
                         get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
                         printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[1], list_update);
-                        send_UDP(server_socket, list_update, n+1, temp_nbr_port[1], "CHNG_ACK");
+                        send_UDP(server_socket, list_update, n+1, temp_nbr_port[1], "UPDT_ACK");
                     }
 
                 }
@@ -179,14 +184,31 @@ int main(int argc, char** argv){
                 
             }
 
+            //Test --> 0
             if(strcmp(recv_buffer, "NEW_TEST") == 0){
-                ack_UDP(server_socket, "ACK_TEST", peer_port, "NEW_TEST");
+                ack_UDP(server_socket, "TEST_ACK", peer_port, "NEW_TEST");
                 add_entry(0);
             }
 
+            //Nuovo caso --> 1
             if(strcmp(recv_buffer, "NEW_CASE") == 0){
-                ack_UDP(server_socket, "ACK_CASE", peer_port, "NEW_CASE");
+                ack_UDP(server_socket, "CASE_ACK", peer_port, "NEW_CASE");
                 add_entry(1);
+            }
+
+            if(strcmp(recv_buffer, "ENTR_REQ") == 0){
+                char type;
+                char entr_repl[MAX_ENTRY_REP];
+                int ret;
+                ack_UDP(server_socket, "EREQ_ACK", peer_port, "ENTR_REQ");
+                sscanf(socket_buffer, "%s %c", recv_buffer, &type);
+
+                ret = sprintf(entr_repl, "%s %d", "ENTR_REP", read_entries(type));
+                entr_repl[ret] = '\0';
+
+                send_UDP(server_socket, entr_repl, ret+1, peer_port, "EREP_ACK");
+                
+
             }
 
             FD_CLR(server_socket, &readset);
@@ -240,7 +262,7 @@ int main(int argc, char** argv){
                 for(i=0; i<connected_peers; i++){
                     //Invia al peer il messaggio di exit
                     printf("Invio SRV_EXIT a %d\n", get_port(i));
-                    send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN+1, get_port(i), "ACK_S_XT");
+                    send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN+1, get_port(i), "S_XT_ACK");
                 }
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)
                 connected_peers = 0;

@@ -26,7 +26,9 @@
 #define SOCK_MAX_LEN 30
 #define MAX_COMMAND 6
 #define MAX_FILENAME_LEN 20
-#define MAX_ENTRY_LEN 50
+#define MAX_CONNECTED_PEERS 100
+#define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
+#define ENTR_REQ_LEN 10
 
 //Variabili
 int my_port;
@@ -39,7 +41,7 @@ socklen_t time_addr_len;
 
 int ret;    //Variabile di servizio
 char stdin_buff[MAX_IN];    //Buffer per i comandi da standard input
-char sock_buff[SOCK_MAX_LEN];
+char socket_buffer[SOCK_MAX_LEN];
 
 //Identifica il server
 int server_port;
@@ -201,9 +203,9 @@ int main(int argc, char** argv){
                     insert_entry(type, quantity);
 
                     if(type == 't')
-                        send_UDP(listener_socket, "NEW_TEST", MESS_TYPE_LEN+1, server_port, "ACK_TEST");
+                        send_UDP(listener_socket, "NEW_TEST", MESS_TYPE_LEN+1, server_port, "TEST_ACK");
                     else
-                        send_UDP(listener_socket, "NEW_CASE", MESS_TYPE_LEN+1, server_port, "ACK_CASE");
+                        send_UDP(listener_socket, "NEW_CASE", MESS_TYPE_LEN+1, server_port, "CASE_ACK");
 
                 }
 
@@ -215,6 +217,8 @@ int main(int argc, char** argv){
                     char aggr;
                     char type;
                     char bounds[2][DATE_LEN];
+                    int tot_entr;
+                    char entry_buffer[MAX_ENTRY_REP];
                     
                     ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bounds[0], bounds[1]);
                     //Numero di parametri
@@ -235,6 +239,16 @@ int main(int argc, char** argv){
 
                     printf("Controlli superati!\n");
 
+                    //Invio richiesta al server
+                    sprintf(entry_buffer, "%s %c", "ENTR_REQ", type);
+                    entry_buffer[ENTR_REQ_LEN] = '\0';
+                    send_UDP(listener_socket, entry_buffer, ENTR_REQ_LEN+1, server_port, "EREQ_ACK");
+                    
+                    //Ricevo risposta
+                    recv_UDP(listener_socket, entry_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
+                    sscanf(entry_buffer, "%s %d", command, &tot_entr); //command non serve piu'
+
+                    printf("Entries nel server: %d; entries qui: %d\n", tot_entr, count_entries(type));
                 }
                 
                 /*
@@ -252,7 +266,7 @@ int main(int argc, char** argv){
 
                     //Gestisce i propri dati
 
-                    send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, server_port, "ACK_C_XT");
+                    send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, server_port, "C_XT_ACK");
 
                     close(listener_socket);
                     _exit(0);
@@ -272,13 +286,15 @@ int main(int argc, char** argv){
             //Messaggio sul socket
             if(FD_ISSET(listener_socket, &readset)){
                 int util_port;
-                char mess_type_buff[MESS_TYPE_LEN];
+                char mess_type_buff[MESS_TYPE_LEN+1];
 
-                util_port = s_recv_UDP(listener_socket, sock_buff, SOCK_MAX_LEN);
+                util_port = s_recv_UDP(listener_socket, socket_buffer, SOCK_MAX_LEN);
                 //Leggo il tipo del messaggio
-                sscanf(sock_buff, "%s", mess_type_buff);
+                sscanf(socket_buffer, "%s", mess_type_buff);
+                mess_type_buff[MESS_TYPE_LEN] = '\0';
+
                 if(util_port == server_port){
-                    printf("Messaggio ricevuto dal server: %s\n", sock_buff);
+                    printf("Messaggio ricevuto dal server: %s\n", socket_buffer);
                     
                     //Arrivo nuova lista
                     if(strcmp(mess_type_buff, "NBR_UPDT")==0){
@@ -291,7 +307,7 @@ int main(int argc, char** argv){
 
                         printf("Parametri prima di sscanf: %d e %d\n", temp_n[0], temp_n[1]);
 
-                        count = sscanf(sock_buff, "%s %d %d", mess_type_buff, &temp_n[0], &temp_n[1]);
+                        count = sscanf(socket_buffer, "%s %d %d", mess_type_buff, &temp_n[0], &temp_n[1]);
 
                         printf("Parametri dopo sscanf: %d e %d\n", temp_n[0], temp_n[1]);
                         
@@ -319,7 +335,7 @@ int main(int argc, char** argv){
                         }
 
                         //Invio ACK
-                        ack_UDP(listener_socket, "CHNG_ACK", server_port, "NBR_UPDT");
+                        ack_UDP(listener_socket, "UPDT_ACK", server_port, "NBR_UPDT");
                     }
                 
                     //Notifica chiusura server
@@ -329,7 +345,7 @@ int main(int argc, char** argv){
                         //Fa qualcosa coi dati
 
                         //Invia ACK
-                        ack_UDP(listener_socket, "ACK_S_XT", server_port, "SRV_EXIT");
+                        ack_UDP(listener_socket, "S_XT_ACK", server_port, "SRV_EXIT");
 
                         //Chiude
                         printf("Chiusura peer\n");

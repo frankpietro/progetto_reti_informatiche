@@ -64,7 +64,7 @@ void retrieve_time(){
 void add_entry(int type){
     FILE *fd1, *fd2;
     int entries[2];
-    char filename[MAX_FILENAME_LEN+1];
+    char filename[MAX_FILENAME_LEN];
     retrieve_time();
     sprintf(filename, "%s_%s", current_d, "entries.txt");
     
@@ -87,6 +87,21 @@ void add_entry(int type){
         remove(filename);
         rename("temp_entries.txt", filename);
     }
+}
+
+int read_entries(char type){
+    FILE *fd;
+    int entries[2];
+
+    retrieve_time();
+    char filename[MAX_FILENAME_LEN];
+    sprintf(filename, "%s_%s", current_d, "entries.txt");
+    
+    fd = fopen(filename, "r");
+    if(fd == NULL)
+        return 0;
+    fscanf(fd, "%d %d", &entries[0], &entries[1]);
+    return (type == 't') ? entries[0] : entries[1];
 }
 
 /*Controllo che la seconda non sia minore della prima in caso di totale
