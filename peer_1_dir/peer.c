@@ -28,7 +28,7 @@
 #define MAX_FILENAME_LEN 20
 #define MAX_CONNECTED_PEERS 100
 #define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
-#define ENTR_REQ_LEN 10
+#define ENTR_W_TYPE 10
 
 //Variabili
 int my_port;
@@ -186,6 +186,7 @@ int main(int argc, char** argv){
                 else if(strcmp(command,"add")==0){
                     char type;
                     int quantity;
+                    char new_entry[ENTR_W_TYPE+1];
 
                     //Se peer non connesso non faccio nulla
                     if(server_port == -1){
@@ -202,10 +203,9 @@ int main(int argc, char** argv){
                     retrieve_time();
                     insert_entry(type, quantity);
 
-                    if(type == 't')
-                        send_UDP(listener_socket, "NEW_TEST", MESS_TYPE_LEN+1, server_port, "TEST_ACK");
-                    else
-                        send_UDP(listener_socket, "NEW_CASE", MESS_TYPE_LEN+1, server_port, "CASE_ACK");
+                    sprintf(new_entry, "%s %c", "NEW_ENTR", type);
+
+                    send_UDP(listener_socket, new_entry, ENTR_W_TYPE+1, server_port, "ENEW_ACK");
 
                 }
 
@@ -241,8 +241,8 @@ int main(int argc, char** argv){
 
                     //Invio richiesta al server
                     sprintf(entry_buffer, "%s %c", "ENTR_REQ", type);
-                    entry_buffer[ENTR_REQ_LEN] = '\0';
-                    send_UDP(listener_socket, entry_buffer, ENTR_REQ_LEN+1, server_port, "EREQ_ACK");
+                    entry_buffer[ENTR_W_TYPE] = '\0';
+                    send_UDP(listener_socket, entry_buffer, ENTR_W_TYPE+1, server_port, "EREQ_ACK");
                     
                     //Ricevo risposta
                     recv_UDP(listener_socket, entry_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");

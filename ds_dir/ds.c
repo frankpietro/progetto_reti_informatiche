@@ -184,16 +184,13 @@ int main(int argc, char** argv){
                 
             }
 
-            //Test --> 0
-            if(strcmp(recv_buffer, "NEW_TEST") == 0){
-                ack_UDP(server_socket, "TEST_ACK", peer_port, "NEW_TEST");
-                add_entry(0);
-            }
-
-            //Nuovo caso --> 1
-            if(strcmp(recv_buffer, "NEW_CASE") == 0){
-                ack_UDP(server_socket, "CASE_ACK", peer_port, "NEW_CASE");
-                add_entry(1);
+            //Inserita nuova entry su qualche peer
+            if(strcmp(recv_buffer, "NEW_ENTR") == 0){
+                char type;
+                ack_UDP(server_socket, "ENEW_ACK", peer_port, "NEW_ENTR");
+                sscanf(socket_buffer, "%s %c", recv_buffer, &type);
+                
+                add_entry(type);
             }
 
             if(strcmp(recv_buffer, "ENTR_REQ") == 0){

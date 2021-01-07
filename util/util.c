@@ -61,12 +61,16 @@ void retrieve_time(){
 }
 
 //Aggiunge una entry nel file con il totale delle entries lato server
-void add_entry(int type){
+void add_entry(char t){
     FILE *fd1, *fd2;
     int entries[2];
     char filename[MAX_FILENAME_LEN];
+    int type;
+    
     retrieve_time();
     sprintf(filename, "%s_%s", current_d, "entries.txt");
+
+    type = (t == 't') ? 0 : 1;
     
     fd1 = fopen(filename, "r");
     if(fd1 == NULL){
@@ -87,6 +91,8 @@ void add_entry(int type){
         remove(filename);
         rename("temp_entries.txt", filename);
     }
+
+    printf("Aggiunta entry di tipo %c\n", t);
 }
 
 int read_entries(char type){
