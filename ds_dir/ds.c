@@ -10,7 +10,7 @@
 #include <time.h>
 
 //Funzioni di utilita'
-#include "../util/util.h"
+#include "../util/util_s.h"
 //Gestione del file con i peer
 #include "../util/peer_file.h"
 //Gesione dei messaggi

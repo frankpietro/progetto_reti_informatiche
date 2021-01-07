@@ -1,0 +1,1 @@
+void retrieve_time();

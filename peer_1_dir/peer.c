@@ -12,9 +12,7 @@
 #include <sys/wait.h>
 
 #include "../util/msg.h"
-#include "../util/util.h"
-//Gestione del file con le entries
-#include "../util/entries.h"
+#include "../util/util_c.h"
 
 #define MAX_IN 40   //Massima lunghezza comando da terminale
 #define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP
@@ -53,10 +51,7 @@ fd_set master;
 fd_set readset;
 int fdmax;
 
-//Variabili temporali
-extern char current_d[DATE_LEN+1];
-extern char current_t[TIME_LEN+1];
-pid_t pid;
+//pid_t pid;
 
 
 int main(int argc, char** argv){
@@ -77,7 +72,6 @@ int main(int argc, char** argv){
     }
 
     else {*/
-        retrieve_time();
         //Pulizia set
         FD_ZERO(&master);
         FD_ZERO(&readset);
@@ -119,7 +113,6 @@ int main(int argc, char** argv){
                     HELP
                 */
                 if(strcmp(command,"help")==0){
-                    printf("Data: %s; ora: %s\n", current_d, current_t);
                     comandi_client();
                 }
 
@@ -134,7 +127,6 @@ int main(int argc, char** argv){
                     char temp_buffer[MESS_TYPE_LEN];
                     int temp_n[2];
                     
-                    retrieve_time();
                     //Controllo che la connessione non esista gia'
                     if(server_port != -1){
                         printf("Il peer e' gia' connesso al DS. Il comando non ha effetto\n");
@@ -200,7 +192,7 @@ int main(int argc, char** argv){
                         continue;
                     }
                     
-                    retrieve_time();
+                    //retrieve_time();
                     insert_entry(type, quantity);
 
                     sprintf(new_entry, "%s %c", "NEW_ENTR", type);

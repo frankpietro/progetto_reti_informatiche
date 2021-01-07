@@ -10,24 +10,18 @@
 #include <time.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include "retr_time.h"
 
-#define LOCALHOST "127.0.0.1"
 #define DATE_LEN 10
 #define TIME_LEN 8
-#define MAX_FILENAME_LEN 22
 #define MIN_YEAR 1990
+#define MAX_CONNECTED_PEERS 100
+#define MAX_FILENAME_LEN 20
 
-char current_d[DATE_LEN+1];
-char current_t[TIME_LEN+1];
+extern int my_port;
+extern char current_d[DATE_LEN+1];
+extern char current_t[TIME_LEN+1];
 
-//Elenco dei comandi disponibili lato server
-void comandi_server(){
-    printf("Elenco dei comandi disponibili:\n");
-    printf("help --> mostra elenco comandi e significato\n");
-    printf("showpeers --> mostra elenco peer connessi alla rete\n");
-    printf("showneighbor [<peer>] --> mostra i neighbor di un peer o di tutti i peer se non viene specificato alcun parametro\n");
-    printf("esc --> termina il DS\n");
-}
 
 //Elenco dei comandi disponibili lato client
 void comandi_client(){
@@ -37,77 +31,6 @@ void comandi_client(){
     printf("add <type> <quantity> --> aggiunge una entry nel registro del peer\n");
     printf("get <aggr> <type> [<date1> <date2>] --> richiede un dato aggregato\n");
     printf("stop --> richiede disconnessione dalla rete\n");
-}
-
-//Recupera la data e l'ora correnti e le inserisce nelle variabili globali lato client
-void retrieve_time(){
-    time_t now_time;
-    struct tm* now_tm;
-
-    now_time = time(NULL);
-    now_tm = gmtime(&now_time);
-
-    if(now_tm->tm_hour < 18)
-        sprintf(current_d, "%04d:%02d:%02d", now_tm->tm_year+1900, now_tm->tm_mon+1, now_tm->tm_mday);
-    else {
-        now_tm->tm_mday += 1;
-        now_time = mktime(now_tm);
-        now_tm = gmtime(&now_time);
-        sprintf(current_d, "%04d:%02d:%02d", now_tm->tm_year+1900, now_tm->tm_mon+1, now_tm->tm_mday);
-    }
-    current_d[DATE_LEN] = '\0';
-    sprintf(current_t, "%02d:%02d:%02d", now_tm->tm_hour, now_tm->tm_min, now_tm->tm_sec);
-    current_t[TIME_LEN] = '\0';
-}
-
-//Aggiunge una entry nel file con il totale delle entries lato server
-void add_entry(char t){
-    FILE *fd1, *fd2;
-    int entries[2];
-    char filename[MAX_FILENAME_LEN];
-    int type;
-    
-    retrieve_time();
-    sprintf(filename, "%s_%s", current_d, "entries.txt");
-
-    type = (t == 't') ? 0 : 1;
-    
-    fd1 = fopen(filename, "r");
-    if(fd1 == NULL){
-        fd2 = fopen(filename, "w");
-        entries[type] = 1;
-        entries[(type+1)%2] = 0;
-        fprintf(fd2, "%d %d", entries[0], entries[1]);
-        fclose(fd2);
-        return;
-    }
-    else {
-        fd2 = fopen("temp_entries.txt", "w");
-        fscanf(fd1, "%d %d", &entries[0], &entries[1]);
-        entries[type]++;
-        fprintf(fd2, "%d %d", entries[0], entries[1]);
-        fclose(fd1);
-        fclose(fd2);
-        remove(filename);
-        rename("temp_entries.txt", filename);
-    }
-
-    printf("Aggiunta entry di tipo %c\n", t);
-}
-
-int read_entries(char type){
-    FILE *fd;
-    int entries[2];
-
-    retrieve_time();
-    char filename[MAX_FILENAME_LEN];
-    sprintf(filename, "%s_%s", current_d, "entries.txt");
-    
-    fd = fopen(filename, "r");
-    if(fd == NULL)
-        return 0;
-    fscanf(fd, "%d %d", &entries[0], &entries[1]);
-    return (type == 't') ? entries[0] : entries[1];
 }
 
 /*Controllo che la seconda non sia minore della prima in caso di totale
@@ -187,5 +110,47 @@ int check_dates(char *date1, char *date2, char aggr){
 
     //Tutto ok
     return 1;
+}
 
+void insert_entry(char type, int quantity){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+
+    retrieve_time();
+
+    sprintf(filename, "%s_%d.txt", current_d, my_port);
+
+    printf("Filename: %s\n", filename);
+
+    fd = fopen(filename, "a");
+    fprintf(fd, "%s %c %d %d\n", current_t, type, quantity, my_port);
+    fclose(fd);
+
+    printf("Entry inserita!\n");
+}
+
+int count_entries(char type){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    int tot;
+    char entry_type;
+    char u_date[DATE_LEN];
+    int num;
+    char tot_peers[6*MAX_CONNECTED_PEERS];
+
+    tot = 0;
+
+    sprintf(filename, "%s_%d.txt", current_d, my_port);
+
+    //printf("Filename: %s\n", filename);
+
+    fd = fopen(filename, "r");
+    if(fd == NULL)
+        return 0;
+    else {
+        while(fscanf(fd, "%s %c %d %s\n", u_date, &entry_type, &num, tot_peers) == 4)
+            tot += (type == entry_type);
+    }
+    fclose(fd);
+    return tot;
 }
