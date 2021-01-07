@@ -76,7 +76,7 @@ int main(int argc, char** argv){
             sscanf(socket_buffer, "%s", recv_buffer);
             recv_buffer[MESS_TYPE_LEN] = '\0';
 
-            printf("Arrivato messaggio %s da %d sul socket\n", recv_buffer, peer_port);
+            printf("Arrivato messaggio %s da %d sul socket\n", socket_buffer, peer_port);
 
             //Messaggi che puo' ricevere il server: richiesta di connessione o di abbandono
 
