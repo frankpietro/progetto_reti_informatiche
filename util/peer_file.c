@@ -9,24 +9,26 @@
 #include <unistd.h>
 #include <time.h>
 
+//Trova il numero di porta di un peer, data la sua posizione
 int get_port(int pos){
     FILE *fp;
     int port;
     char temp[INET_ADDRSTRLEN];
 
-    fp = fopen("peer_addr.txt", "r");
+    fp = fopen("./ds_dir/peer_addr.txt", "r");
     while(pos-- >= 0)
         fscanf(fp, "%s %d", temp, &port);
     
     return port;
 }
 
+//Trova i vicini di un peer e li restituisce
 void get_neighbors(int peer, int conn, int *nbr_1, int *nbr_2){
     FILE *fd;
     int m,f,serv;
     char temp_buff[INET_ADDRSTRLEN];
 
-    fd = fopen("peer_addr.txt", "r");
+    fd = fopen("./ds_dir/peer_addr.txt", "r");
     //Algoritmo simile a quello di inserimento
 
     (*nbr_1) = -1;
@@ -76,6 +78,7 @@ void get_neighbors(int peer, int conn, int *nbr_1, int *nbr_2){
     }
 }
 
+//Inserisce un peer nel file dei peer
 int insert_peer(char* addr, int port, int connected){
     FILE *fp, *temp;
     int m, f, serv;
@@ -84,7 +87,7 @@ int insert_peer(char* addr, int port, int connected){
 
     //Se primo peer a connettersi
     if(connected == 0){
-        fp = fopen("peer_addr.txt", "w");
+        fp = fopen("./ds_dir/peer_addr.txt", "w");
         fprintf(fp, "%s %d\n", addr, port);
         fclose(fp);
         return 1;
@@ -94,7 +97,7 @@ int insert_peer(char* addr, int port, int connected){
     if(connected == 1){
         //Non la uso
         temp_port[1] = -1;
-        fp = fopen("peer_addr.txt", "r");
+        fp = fopen("./ds_dir/peer_addr.txt", "r");
         temp = fopen("temp.txt", "w");
 
         fscanf(fp, "%s %d", temp_buff, &temp_port[0]);
@@ -108,15 +111,15 @@ int insert_peer(char* addr, int port, int connected){
         }
         fclose(temp);
         fclose(fp);
-        remove("peer_addr.txt");
-        rename("temp.txt", "peer_addr.txt");
+        remove("./ds_dir/peer_addr.txt");
+        rename("temp.txt", "./ds_dir/peer_addr.txt");
 
         return 1;
     }
 
     //Inserisco ordinatamente nel caso di due o piu' peer gia' presenti
     else {
-        fp = fopen("peer_addr.txt", "r");
+        fp = fopen("./ds_dir/peer_addr.txt", "r");
         temp = fopen("temp.txt", "w");
 
         temp_port[0] = -1;
@@ -162,8 +165,8 @@ int insert_peer(char* addr, int port, int connected){
         //Fine
         fclose(temp);
         fclose(fp);
-        remove("peer_addr.txt");
-        rename("temp.txt", "peer_addr.txt");
+        remove("./ds_dir/peer_addr.txt");
+        rename("temp.txt", "./ds_dir/peer_addr.txt");
 
         return 1;
     }
@@ -172,12 +175,13 @@ int insert_peer(char* addr, int port, int connected){
     return -1;
 }
 
+//Controlla se un peer e' connesso o meno
 int isIn(int port){
     FILE *fd;
     char temp_buffer[INET_ADDRSTRLEN];
     int serv;
     
-    fd = fopen("peer_addr.txt", "r");
+    fd = fopen("./ds_dir/peer_addr.txt", "r");
 
     if(fd){
         while(fscanf(fd, "%s %d", temp_buffer, &serv)==2){
@@ -189,17 +193,18 @@ int isIn(int port){
     return 0;
 }
 
+//Rimuove un peer dalla lista di quelli connessi
 void remove_peer(int port){
     FILE *fd, *temp;
     char temp_buffer[INET_ADDRSTRLEN];
     int serv,ret;
 
-    fd = fopen("peer_addr.txt", "r");
+    fd = fopen("./ds_dir/peer_addr.txt", "r");
     
     ret = fscanf(fd, "%s %d", temp_buffer, &serv);
     if(ret < 2){
         fclose(fd);
-        remove("peer_addr.txt");
+        remove("./ds_dir/peer_addr.txt");
     }
     else {
         temp = fopen("temp.txt", "w");
@@ -216,10 +221,11 @@ void remove_peer(int port){
 
     fclose(fd);
     fclose(temp);
-    remove("peer_addr.txt");
-    rename("temp.txt", "peer_addr.txt");
+    remove("./ds_dir/peer_addr.txt");
+    rename("temp.txt", "./ds_dir/peer_addr.txt");
 }
 
+//Compone la lista da inviare in caso di NBR_LIST o NBR_UPDT
 void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* list_length){
     int temp_port[2];
     get_neighbors(peer, connected, &temp_port[0], &temp_port[1]);
@@ -237,6 +243,7 @@ void get_list(int peer, int connected, char* mess_type, char* list_buffer, int* 
     printf("Lista preparata: %s\n", list_buffer);
 }
 
+//Stampa i peer connessi alla rete (comando showpeers)
 void print_peers(int connected){
     int i;
     printf("Peer connessi alla rete:");
@@ -249,6 +256,7 @@ void print_peers(int connected){
     printf("\n");
 }
 
+//Stampa i vicini di un singolo peer (comando showneighbor <peer>)
 void print_single_neighbor(int connected, int port){
     if(!isIn(port))
         printf("Peer %d non connesso alla rete!\n", port);
@@ -265,6 +273,7 @@ void print_single_neighbor(int connected, int port){
     }
 }
 
+//Stampa i vicini di tutti i peer (comando showneighbor)
 void print_all_neighbors(int connected){
     int i;
     switch(connected){

@@ -16,7 +16,7 @@
 #define TIME_LEN 8
 #define MIN_YEAR 1990
 #define MAX_CONNECTED_PEERS 100
-#define MAX_FILENAME_LEN 20
+#define MAX_FILENAME_LEN 31
 
 extern int my_port;
 extern char current_d[DATE_LEN+1];
@@ -118,7 +118,7 @@ void insert_entry(char type, int quantity){
 
     retrieve_time();
 
-    sprintf(filename, "%s_%d.txt", current_d, my_port);
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
 
     printf("Filename: %s\n", filename);
 
@@ -140,7 +140,9 @@ int count_entries(char type){
 
     tot = 0;
 
-    sprintf(filename, "%s_%d.txt", current_d, my_port);
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
 
     //printf("Filename: %s\n", filename);
 

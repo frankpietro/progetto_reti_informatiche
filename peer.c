@@ -11,8 +11,8 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#include "../util/msg.h"
-#include "../util/util_c.h"
+#include "./util/msg.h"
+#include "./util/util_c.h"
 
 #define MAX_IN 40   //Massima lunghezza comando da terminale
 #define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP

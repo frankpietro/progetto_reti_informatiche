@@ -10,11 +10,11 @@
 #include <time.h>
 
 //Funzioni di utilita'
-#include "../util/util_s.h"
+#include "./util/util_s.h"
 //Gestione del file con i peer
-#include "../util/peer_file.h"
+#include "./util/peer_file.h"
 //Gesione dei messaggi
-#include "../util/msg.h"
+#include "./util/msg.h"
 
 #define MAX_COMMAND 30
 #define MESS_TYPE_LEN 8
@@ -68,8 +68,8 @@ int main(int argc, char** argv){
 
         if(FD_ISSET(server_socket, &readset)){            
             //Variabili per salvare porta e indirizzo
-            char peer_addr_buff[INET_ADDRSTRLEN];
             int peer_port;
+            char peer_addr_buff[INET_ADDRSTRLEN] = LOCALHOST; //Assumo che i peer partano tutti sulla macchina locale
             
             //Ricezione richieste di connessione
             peer_port = s_recv_UDP(server_socket, socket_buffer, SOCK_MAX_LEN);
@@ -89,7 +89,7 @@ int main(int argc, char** argv){
                 
                 //Ack dell'arrivo della richiesta
                 ack_UDP(server_socket, "CONN_ACK", peer_port, socket_buffer, strlen(socket_buffer));
-                
+
                 //Inserisco il peer nella lista
                 if(!isIn(peer_port)){
                     if(insert_peer(peer_addr_buff, peer_port, connected_peers)<0){
@@ -266,7 +266,7 @@ int main(int argc, char** argv){
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)
                 connected_peers = 0;
                 //Cancello il file con la lista di peer
-                remove("peer_addr.txt");
+                remove("./ds_dir/peer_addr.txt");
 
                 close(server_socket);
                 _exit(0);

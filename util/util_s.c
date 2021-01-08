@@ -15,7 +15,7 @@
 #define LOCALHOST "127.0.0.1"
 #define DATE_LEN 10
 #define TIME_LEN 8
-#define MAX_FILENAME_LEN 22
+#define MAX_FILENAME_LEN 31
 #define MIN_YEAR 1990
 
 extern char current_d[DATE_LEN+1];
@@ -38,7 +38,7 @@ void add_entry(char t){
     int type;
     
     retrieve_time();
-    sprintf(filename, "%s_%s", current_d, "entries.txt");
+    sprintf(filename, "%s%s_%s", "./ds_dir/", current_d, "entries.txt");
 
     type = (t == 't') ? 0 : 1;
     
@@ -69,10 +69,10 @@ void add_entry(char t){
 int read_entries(char type){
     FILE *fd;
     int entries[2];
+    char filename[MAX_FILENAME_LEN];
 
     retrieve_time();
-    char filename[MAX_FILENAME_LEN];
-    sprintf(filename, "%s_%s", current_d, "entries.txt");
+    sprintf(filename, "%s%s_%s", "./ds_dir/", current_d, "entries.txt");
     
     fd = fopen(filename, "r");
     if(fd == NULL)

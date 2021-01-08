@@ -168,7 +168,7 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
             }
             //Ignoro qualunque altro messaggio
             else {
-                printf("[S] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), acked, ntohs(recv_addr.sin_port));
+                printf("[S] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), acked, recv_port);
             }
             
             FD_CLR(socket, &readset);
