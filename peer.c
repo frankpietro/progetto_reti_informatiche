@@ -215,9 +215,8 @@ int main(int argc, char** argv){
                     int tot_entr;
                     int peer_entr;
                     int sum_entr;
-                    char entry_buffer[MAX_ENTRY_REP];
-                    char new_entry[MAX_ENTRY_UPDATE];
-                    
+                    char get_buffer[MAX_SUM_ENTRIES]; //Ricevere il messaggio
+
                     //Se peer non connesso non faccio nulla
                     if(server_port == -1){
                         printf("Peer non connesso\n");
@@ -244,13 +243,13 @@ int main(int argc, char** argv){
                     printf("Controlli superati!\n");
 
                     //Invio richiesta al server
-                    ret = sprintf(entry_buffer, "%s %c", "ENTR_REQ", type);
-                    entry_buffer[ret] = '\0';
-                    send_UDP(listener_socket, entry_buffer, ret, server_port, "EREQ_ACK");
+                    ret = sprintf(get_buffer, "%s %c", "ENTR_REQ", type);
+                    get_buffer[ret] = '\0';
+                    send_UDP(listener_socket, get_buffer, ret, server_port, "EREQ_ACK");
                     
                     //Ricevo risposta
-                    recv_UDP(listener_socket, entry_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
-                    sscanf(entry_buffer, "%s %d", command, &tot_entr); //command non serve piu'
+                    recv_UDP(listener_socket, get_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
+                    sscanf(get_buffer, "%s %d", command, &tot_entr); //command non serve piu'
 
                     peer_entr = count_entries(type);
 
@@ -281,19 +280,19 @@ int main(int argc, char** argv){
                             printf("Devo chiedere informazioni ai miei vicini\n");
                             //Controllo se qualche peer ha il dato aggregato pronto
                             
-                            //Posso riciclare il buffer entry_buffer
-                            ret = sprintf(new_entry, "%s %d %d %c", "AGGR_REQ", my_port, tot_entr, type);
-                            entry_buffer[ret] = '\0';
+                            //Posso riciclare il buffer get_buffer
+                            ret = sprintf(get_buffer, "%s %d %d %c", "AGGR_REQ", my_port, tot_entr, type);
+                            get_buffer[ret] = '\0';
                             
-                            send_UDP(listener_socket, new_entry, ret, neighbor[0], "AREQ_ACK");
+                            send_UDP(listener_socket, get_buffer, ret, neighbor[0], "AREQ_ACK");
                            
-                            //Posso sfruttare new_entry
-                            recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
+                            //Posso sfruttare get_buffer
+                            recv_UDP(listener_socket, get_buffer, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
 
-                            printf("Ricevuto %s\n", new_entry);
+                            printf("Ricevuto %s\n", get_buffer);
 
                             //Posso riciclare il buffer command
-                            sscanf(new_entry, "%s %d", command, &sum_entr);
+                            sscanf(get_buffer, "%s %d", command, &sum_entr);
                             
                             if(sum_entr != 0){
                                 printf("Ho ottenuto il dato che cercavo\n");
@@ -301,8 +300,43 @@ int main(int argc, char** argv){
                             }
                             else{
                                 printf("Nessuno ha gia' pronto il dato cercato\n");
+                                //Necessario inviare a tutti la richiesta di nuove entries
+                                ret = sprintf(get_buffer, "%s %d %c", "EP2P_REQ", my_port, type);
+                                get_buffer[ret] = '\0';
+                                printf("Faccio partire il giro di richieste di entries\n");
+                                send_UDP(listener_socket, get_buffer, ret, neighbor[0], "2REQ_ACK");
+                                //Aspetto tutte le entries che mi mancano
+                                wait_for_entries(peer_entr, tot_entr, type);
+                                /*
+                                while(peer_entr < tot_entr){
+                                    //Nuove entries: sempre dall'ultimo peer
+                                    ret = (neighbor[1] != -1) ? 1 : 0;
+                                    recv_UDP(listener_socket, get_buffer, MAX_ENTRY_UPDATE, neighbor[ret], "EP2P_REP", "2REP_ACK");
+                                    
+                                    sscanf(get_buffer, "%s %d %s %c %d %s", command, &r_port, util_buffer, &r_type, &r_quantity, entry_ins_buffer);
+                                    //Controlli: non dovrebbero mai fallire
+                                    ret = sprintf(control_buffer, "%d;", my_port);
+                                    control_buffer[ret] = '\0';
+                                    if(!(r_port == my_port && r_type == type && strstr(entry_ins_buffer, control_buffer))){
+                                        printf("Errore insolubile nella ricezione, arrivato pacchetto corrotto\n");
+                                        continue;
+                                    }
+                                    ret = sprintf(get_buffer, "%s %c %d %s", util_buffer, r_type, r_quantity, entry_ins_buffer);
+                                    get_buffer[ret] = 0;
+                                    insert_entry_string(get_buffer);
+                                }*/
+
+                                printf("Tutte le entries necessarie sono arrivate a destinazione");
+
+                                ret = (neighbor[1] != -1) ? 1 : 0;
+                                //Ricevo HLT per verificare che sia tutto corretto
+                                recv_UDP(listener_socket, get_buffer, MESS_TYPE_LEN, neighbor[ret], "EP2P_HLT", "2HLT_ACK");
+                                //Eseguo il calcolo
+                                sum_entr = sum_entries(type);
+                                //Lo riporto sul file
+                                write_aggr(tot_entr, sum_entr, type);
                             }
-                            //send_UDP(listener_socket, "ENTR_FLD", MESS_TYPE_LEN+1, neighbor[0], "EFLD_ACK");
+
                         }
                     }
 
@@ -460,8 +494,27 @@ int main(int argc, char** argv){
                             send_UDP(listener_socket, answer, ret, req_port, "AREP_ACK");
                         }
                     }
-                    //DEBUG
-                    printf("Fine della reazione al messaggio AGGR_REQ\n");
+                    
+                    //Messaggio di richiesta entries
+                    if(strcmp(mess_type_buffer, "EP2P_REQ") == 0){
+                        char r_type;
+                        //Invio ack
+                        ack_UDP(listener_socket, "2REQ_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                        //Leggo il numero del mittente riciclando util_port
+                        sscanf(socket_buffer, "%s %d %c", mess_type_buffer, &util_port, &r_type);
+                        //Invio tutte le entries mancanti
+                        send_missing_entries(util_port, r_type);
+
+                        //Inoltro richiesta o invio alt
+                        if(neighbor[0] == util_port){
+                            printf("Invio HLT al peer %d che ha fatto partire il giro di richieste\n", neighbor[0]);
+                            send_UDP(listener_socket, "EP2P_HLT", MESS_TYPE_LEN, neighbor[0], "2HLT_ACK");
+                        }
+                        else {
+                            printf("Inoltro la richiesta partita da %d al peer %d\n", util_port, neighbor[0]);
+                            send_UDP(listener_socket, socket_buffer, strlen(socket_buffer), neighbor[0], "2REQ_ACK");
+                        }
+                    }
                 }
 
             }

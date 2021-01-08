@@ -34,6 +34,19 @@ se informazioni dal socket {
             se ho il dato
                 lo invio direttamente a chi lo ha chiesto
         }
+        se richiesta di entries {
+            invio ack
+            leggo il peer che necessita di entries
+            cerco le entries che ho io e che lui non ha
+            per ogni entry {
+                compongo messaggio di risposta
+                lo invio al peer richiedente
+            }
+            se il peer che necessita di entries e' il mio vicino 0
+                invio messaggio di alt
+            altrimenti
+                inoltro al vicino 0 il messaggio di richiesta
+        }
     }
 }
 
@@ -73,13 +86,21 @@ se informazioni da stdin {
                 se contiene un numero positivo
                     lo scrivo su un file
                 se contiene 0 {
-                    //...............................................................................
+                    invio richiesta di nuove entrate con tipo e mia porta
+                    per ogni entrata che mi manca {
+                        ricevo il messaggio
+                        controllo che non sia corrotto
+                        aggiungo la nuova entrata alle mie
+                    }
+                    ricevo messaggio di fine trasferimento entrate
+                    calcolo il totale
+                    lo scrivo su un file
                 }
             }
         }
     }
     se stop {
-        //Gestisce i dati
+        //......................................................................................................................
         invio messaggio di uscita
         chiudo il socket
         esco

@@ -18,7 +18,7 @@ all: ./ds ./peer
 ./util/msg.o: ./util/msg.c ./util/msg.h
 	gcc -Wall -c ./util/msg.c -o ./util/msg.o
 
-./util/util_c.o: ./util/util_c.c ./util/util_c.h ./util/retr_time.h
+./util/util_c.o: ./util/util_c.c ./util/util_c.h ./util/retr_time.h ./util/msg.h
 	gcc -Wall -c ./util/util_c.c -o ./util/util_c.o
 
 ./util/util_s.o: ./util/util_s.c ./util/util_s.h ./util/retr_time.h

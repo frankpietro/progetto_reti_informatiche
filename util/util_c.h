@@ -5,3 +5,5 @@ int count_entries(char);
 int sum_entries(char);
 void write_aggr(int,int,char);
 int check_aggr(int,char);
+void wait_for_entries(int,int,char);
+void send_missing_entries(int,char);

@@ -15,13 +15,14 @@ int main(){
     struct sockaddr_in server_addr;     //Struttura per gestire il socket
     int ret;    //Variabile di servizio per funzioni che ritornano un intero di controllo
 */
-
-    time_t now;
-    struct tm* now_tm;
-
-    now = time(NULL);
-    now_tm = gmtime(&now);
-    printf("Data: %d-%02d-%02d", now_tm->tm_year+1900, now_tm->tm_mon+1, now_tm->tm_mday);
+    int prova;
+    char s[200] = "5001,5002,5003,";
+    strcat(s, "5400,");
+    if(strstr(s, "5002,"))
+        printf("Funziona\n");
+    
+    sscanf(s, "%d", &prova);
+    printf("Primo intero: %d", prova);
 
     return 0;
 }

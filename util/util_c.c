@@ -11,17 +11,22 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include "retr_time.h"
+#include "msg.h"
 
 #define DATE_LEN 10
 #define TIME_LEN 8
 #define MIN_YEAR 1990
 #define MAX_CONNECTED_PEERS 100
 #define MAX_FILENAME_LEN 31
+#define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
+#define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
+#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 
 extern int my_port;
 extern char current_d[DATE_LEN+1];
 extern char current_t[TIME_LEN+1];
-
+extern int neighbor[2];
+extern int listener_socket;
 
 //Elenco dei comandi disponibili lato client
 void comandi_client(){
@@ -120,7 +125,7 @@ int check_dates(char *date1, char *date2, char aggr){
 Fine validazione input get
 */
 
-//Inserisce entry nel database
+//Inserisce entry nel file di entries
 void insert_entry(char type, int quantity){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
@@ -132,7 +137,23 @@ void insert_entry(char type, int quantity){
     printf("Filename: %s\n", filename);
 
     fd = fopen(filename, "a");
-    fprintf(fd, "%s %c %d %d\n", current_t, type, quantity, my_port);
+    fprintf(fd, "%s %c %d %d;\n", current_t, type, quantity, my_port);
+    fclose(fd);
+
+    printf("Entry inserita!\n");
+}
+
+//Inserisce una intera entry passata come stringa nel file di entries
+void insert_entry_string(char* entry){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+
+    fd = fopen(filename, "a");
+    fprintf(fd, "%s\n", entry);
     fclose(fd);
 
     printf("Entry inserita!\n");
@@ -240,4 +261,82 @@ int check_aggr(int entries, char type){
     fscanf(fd, "%d %d", &count, &sum);
     fclose(fd);
     return (count == entries) ? sum : 0;
+}
+
+//Riceve tutte le entrate che mancavano al momento della chiamata della get e le aggiunge al file delle entrate
+void wait_for_entries(int peer_entr, int tot_entr, char type){
+    int ret;
+    char get_buffer[MAX_ENTRY_UPDATE];
+    char command[MESS_TYPE_LEN];
+    char util_buffer[TIME_LEN];
+    char r_type;
+    int r_quantity;
+    char entry_ins_buffer[MAX_ENTRY_UPDATE];
+    char control_buffer[7];
+    char* isIn;
+
+    while(peer_entr < tot_entr){
+        //Nuove entries: possono arrivare da tutti
+        ret = (neighbor[1] != -1) ? 1 : 0;
+        recv_UDP(listener_socket, get_buffer, MAX_ENTRY_UPDATE, ALL_PEERS, "EP2P_REP", "2REP_ACK");
+
+        printf("Ricevuta entry %s\n", get_buffer);
+        
+        sscanf(get_buffer, "%s %s %c %d %s", command, util_buffer, &r_type, &r_quantity, entry_ins_buffer);
+        //Controlli: non dovrebbero mai fallire
+        ret = sprintf(control_buffer, "%d;", my_port);
+        control_buffer[ret] = '\0';
+        printf("Stringa di controllo: %s\n", control_buffer);
+        isIn = strstr(entry_ins_buffer, control_buffer);
+        if(!(r_type == type && isIn != NULL)){
+            printf("Errore insolubile nella ricezione, arrivato pacchetto corrotto\n");
+            continue;
+        }
+        ret = sprintf(get_buffer, "%s %c %d %s", util_buffer, r_type, r_quantity, entry_ins_buffer);
+        get_buffer[ret] = 0;
+        insert_entry_string(get_buffer);
+        peer_entr++;
+    }
+}
+
+//Invia tutte le entries che mancano al peer richiedente e che sono nel suo database
+void send_missing_entries(int req_port, char type){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    char e_time[TIME_LEN];
+    char e_type;
+    int e_quantity;
+    char e_peers[6*MAX_CONNECTED_PEERS];
+    char whole_entry[MAX_ENTRY_UPDATE];
+    char check[7];
+    int ret;
+
+    ret = sprintf(check, "%d;", req_port);
+    check[ret] = '\0';
+
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+
+    printf("Scorro tutte le entries\n");
+
+    fd = fopen(filename, "r");
+    //Scorro tutte le entries
+    while(fscanf(fd, "%s %c %d %s", e_time, &e_type, &e_quantity, e_peers) != EOF){
+        //Se ne trovo una del tipo richiesto e non posseduta dal richiedente
+        if(e_type == type && strstr(e_peers, check) == NULL){
+            printf("Trovata entry da inviare\n");
+            //Aggiungo il suo numero di porta tra i peer che possiedono quella entry
+            strcat(e_peers, check);
+            //Gliela mando
+            ret = sprintf(whole_entry, "%s %s %c %d %s", "EP2P_REP", e_time, e_type, e_quantity, e_peers);
+            whole_entry[ret] = '\0';
+            send_UDP(listener_socket, whole_entry, ret, req_port, "2REP_ACK");
+        }
+    }
+
+    fclose(fd);
+    
+    printf("Fine delle entries da inviare\n");
+
 }
