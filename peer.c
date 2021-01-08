@@ -29,6 +29,7 @@
 #define ENTR_W_TYPE 10
 #define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
 #define MAX_SUM_ENTRIES 19 //Massimo totale aggregato: a 10 cifre
+#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 
 //Variabili
 int my_port;
@@ -283,12 +284,9 @@ int main(int argc, char** argv){
                             entry_buffer[ret] = '\0';
                             
                             send_UDP(listener_socket, new_entry, ret+1, neighbor[0], "AREQ_ACK");
-                            
-                            //Se alla rete sono connessi due peer la risposta arriva da neighbor[0]
-                            ret = (neighbor[1] == -1) ? 0 : 1;
                            
                             //Posso sfruttare new_entry
-                            recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, neighbor[ret], "AGGR_REP", "AREP_ACK");
+                            recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
 
                             //Gestisco la risposta
 

@@ -11,6 +11,7 @@
 
 #define MESS_TYPE_LEN 8
 #define MAX_RECV 40
+#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 
 #define LOCALHOST "127.0.0.1"
 
@@ -217,13 +218,20 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
             //Leggo cosa ho ricevuto
             recvfrom(socket, buffer, buff_l, 0, (struct sockaddr*)&send_addr, &send_addr_len);
             sscanf(buffer, "%s", temp_buffer);
-            if(ntohs(send_addr.sin_port) == send_port && strcmp(correct_header, temp_buffer) == 0){
+
+            //Opzione per ricevere da tutti gli indirizzi
+            if((ntohs(send_addr.sin_port) == send_port || send_port == ALL_PEERS) && strcmp(correct_header, temp_buffer) == 0){
                 //Il peer ha ricevuto sicuramente la lista
-                printf("Messaggio %s ricevuto correttamente dal mittente %d\n", buffer, send_port);
+                printf("Messaggio %s ricevuto correttamente dal mittente %d\n", buffer, ntohs(send_addr.sin_port));
                 ok = 1;
             }
             else {
-                printf("[R] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", temp_buffer, ntohs(send_addr.sin_port), correct_header, send_port);
+                //Stampo il messaggio di errore giusto
+                printf("[R] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da ", temp_buffer, ntohs(send_addr.sin_port), correct_header);
+                if(send_port == ALL_PEERS)
+                    printf("chiunque, scartato\n");
+                else
+                    printf("%d, scartato\n", send_port);
             }
 
             FD_CLR(socket, &readset);
