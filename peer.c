@@ -85,8 +85,8 @@ int main(int argc, char** argv){
         listener_socket = prepare(&listener_addr, &listener_addr_len, my_port);
 
         //All'inizio nessun vicino
-        neighbor[0] = 0;
-        neighbor[1] = 0;
+        neighbor[0] = -1;
+        neighbor[1] = -1;
 
         //Identifica un peer non connesso
         server_port = -1;
@@ -402,11 +402,12 @@ int main(int argc, char** argv){
                 else if(util_port == neighbor[0] || util_port == neighbor[1]){
                     printf("Messaggio %s arrivato dal vicino %d\n", socket_buffer, util_port);
                     //Vicino chiede se esiste dato aggregato
-                    if(mess_type_buffer == "AGGR_REQ"){
+                    if(strcmp(mess_type_buffer, "AGGR_REQ") == 0){
                         int req_port;
                         int act_entries;
                         char type;
                         int aggr;
+                        char answer[MAX_ENTRY_REP];
 
                         //Invio ack
                         ack_UDP(listener_socket, "AREQ_ACK", util_port, socket_buffer, strlen(socket_buffer));
@@ -417,15 +418,30 @@ int main(int argc, char** argv){
                         aggr = check_aggr(act_entries, type);
 
                         if(aggr == 0){
-                            if(neighbor[1] == -1)
-                                send_UDP(listener_socket, "AGGR_REP 0", 11, neighbor[0], "AREP_ACK");
+                            printf("Non ho la risposta alla richiesta\n");
+                            if(neighbor[1] == -1){
+                                if(neighbor[0] != req_port)
+                                    printf("Errore insolubile, crash della rete\n");
+                                else {
+                                    printf("Invio direttamente la risposta negativa a %d", neighbor[0]);
+                                    strcpy(answer, "AGGR_REP 0");
+                                    send_UDP(listener_socket, answer, strlen(answer)+1, neighbor[0], "AREP_ACK");
+                                }
+                            }
                             else {
                                 printf("Work in progress\n");
                             }
 
                         }
-
+                        else {
+                            printf("Ho la risposta che cerca il peer %d\n", req_port);
+                            ret = sprintf(answer, "%s %d", "AGGR_REP", aggr);
+                            answer[ret] = '\0';
+                            send_UDP(listener_socket, answer, ret+1, req_port, "AREP_ACK");
+                        }
                     }
+                    //DEBUG
+                    printf("Fine della reazione al messaggio AGGR_REQ\n");
                 }
 
             }
