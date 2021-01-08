@@ -55,7 +55,8 @@ int s_recv_UDP(int socket, char* buffer, int buff_l){
     socket: socket di chi invia
     buffer: ACK da inviare
     send_port: porta del mittente a cui inviare ACK
-    acked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
+    unacked: stringa con cui confrontare eventuale tipo del messaggio inviato dal mittente per controllare che sia l'ack atteso
+    unacked_len: lunghezza del messaggio da confrontare
 */
 void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked_len){
     int received, ret;

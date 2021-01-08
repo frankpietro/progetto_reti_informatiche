@@ -2,6 +2,10 @@
 # Il comando 'make' necessita del makefile, che deve essere
 # creato come descritto nella guida sulla pagina Elearn
 
+  make clean
+
+  clear
+
   make
 
   read -p "Compilazione eseguita. Premi invio per eseguire..."

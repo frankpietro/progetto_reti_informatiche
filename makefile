@@ -28,8 +28,7 @@ all: ./ds ./peer
 	gcc -Wall -c ./util/retr_time.c -o ./util/retr_time.o
 
 clean:
-	rm ./*.o ./ds ./peer ./util/*.o
+	-rm ./*.o ./ds ./peer ./util/*.o
 	-mv ./ds_dir/2021* ./logs
 	-rm ./ds_dir/*.txt
-	-mv ./logs/* ../log_arch/
 	-mv ./peer_dir/*.txt ./logs

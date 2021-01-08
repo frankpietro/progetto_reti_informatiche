@@ -156,3 +156,49 @@ int count_entries(char type){
     fclose(fd);
     return tot;
 }
+
+//Somma le entries in un file 
+int sum_entries(char type){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    int tot;
+    char entry_type;
+    char u_date[DATE_LEN];
+    int num;
+    char tot_peers[6*MAX_CONNECTED_PEERS];
+
+    tot = 0;
+
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+
+    //printf("Filename: %s\n", filename);
+
+    fd = fopen(filename, "r");
+    if(fd == NULL)
+        return 0;
+    else {
+        while(fscanf(fd, "%s %c %d %s\n", u_date, &entry_type, &num, tot_peers) == 4)
+            if(entry_type == type)
+                tot += num;
+    }
+    fclose(fd);
+    return tot;
+}
+
+//Scrive l'aggregato su un file
+void write_aggr(int count, int sum, char type){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+
+    retrieve_time();
+
+    sprintf(filename, "%s%c_%s_%d.txt", "./peer_dir/aggr_", type, current_d, my_port);
+
+    //printf("Filename: %s\n", filename);
+
+    fd = fopen(filename, "w");
+    fprintf(fd, "%d %d", count, sum);
+    fclose(fd);
+}

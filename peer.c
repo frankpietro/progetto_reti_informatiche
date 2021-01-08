@@ -27,6 +27,8 @@
 #define MAX_CONNECTED_PEERS 100
 #define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
 #define ENTR_W_TYPE 10
+#define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
+#define MAX_SUM_ENTRIES 19 //Massimo totale aggregato: a 10 cifre
 
 //Variabili
 int my_port;
@@ -44,7 +46,7 @@ char socket_buffer[SOCK_MAX_LEN];
 //Identifica il server
 int server_port;
 
-int neighbors[2];   //Da usare per salvarci i vicini
+int neighbor[2];   //Da usare per salvarci i vicini
 
 //Variabili per gestire input da socket oppure da stdin
 fd_set master;
@@ -82,8 +84,8 @@ int main(int argc, char** argv){
         listener_socket = prepare(&listener_addr, &listener_addr_len, my_port);
 
         //All'inizio nessun vicino
-        neighbors[0] = 0;
-        neighbors[1] = 0;
+        neighbor[0] = 0;
+        neighbor[1] = 0;
 
         //Identifica un peer non connesso
         server_port = -1;
@@ -159,12 +161,12 @@ int main(int argc, char** argv){
                                 break;
                             case 2:
                                 printf("Un vicino con porta %d\n", temp_n[0]);
-                                neighbors[0] = temp_n[0];
+                                neighbor[0] = temp_n[0];
                                 break;
                             case 3:
                                 printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
-                                neighbors[0] = temp_n[0];
-                                neighbors[1] = temp_n[1];
+                                neighbor[0] = temp_n[0];
+                                neighbor[1] = temp_n[1];
                                 break;
                             default:
                                 printf("Problema nella trasmissione della lista\n");
@@ -205,12 +207,13 @@ int main(int argc, char** argv){
                     GET
                 */
                 else if(strcmp(command,"get")==0){
-                    //int date[2][3];
                     char aggr;
                     char type;
                     char bounds[2][DATE_LEN];
                     int tot_entr;
+                    int sum_entr;
                     char entry_buffer[MAX_ENTRY_REP];
+                    char new_entry[MAX_ENTRY_UPDATE];
                     
                     ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bounds[0], bounds[1]);
                     //Numero di parametri
@@ -241,6 +244,49 @@ int main(int argc, char** argv){
                     sscanf(entry_buffer, "%s %d", command, &tot_entr); //command non serve piu'
 
                     printf("Entries nel server: %d; entries qui: %d\n", tot_entr, count_entries(type));
+
+                    //Se nessuna entry, inutile continuare
+                    if(!tot_entr){
+                        printf("Nessun dato aggregato da calcolare\n");
+                        continue;
+                    }
+
+                    //Se ho tutti i dati che servono, eseguo il calcolo
+                    if(tot_entr == count_entries(type)){
+                        sum_entr = sum_entries(type);
+                        printf("Numero di ");
+                        if(type == 't')
+                            printf("tamponi");
+                        else
+                            printf("nuovi casi");
+                        printf(": %d\n", sum_entr);
+                        
+                        write_aggr(tot_entr, sum_entr, type);
+                        continue;
+                    }
+                    
+                    else {
+                        //Se non ho vicini non posso calcolare nulla
+                        if(neighbor[0] == -1 && neighbor[1] == -1){
+                            printf("Errore, impossibile calcolare il dato richiesto\n");
+                            continue;
+                        }
+                        else {
+                            printf("Devo chiedere informazioni ai miei vicini\n");
+                            //Controllo se qualche peer ha il dato aggregato pronto
+                            //Posso riciclare il buffer entry_buffer
+                            ret = sprintf(entry_buffer, "%s %d", "AGGR_REQ", my_port);
+                            entry_buffer[ret] = '\0';
+                            send_UDP(listener_socket, entry_buffer, ret+1, neighbor[0], "AREQ_ACK");
+                            //Se alla rete sono connessi due peer la risposta arriva da neighbor[0]
+                            ret = (neighbor[1] == -1) ? 0 : 1;
+                            //Posso sfruttare new_entry
+                            recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, neighbor[ret], "AGGR_REP", "AREP_ACK");
+
+                            //send_UDP(listener_socket, "ENTR_FLD", MESS_TYPE_LEN+1, neighbor[0], "EFLD_ACK");
+                        }
+                    }
+
                 }
                 
                 /*
@@ -278,18 +324,18 @@ int main(int argc, char** argv){
             //Messaggio sul socket
             if(FD_ISSET(listener_socket, &readset)){
                 int util_port;
-                char mess_type_buff[MESS_TYPE_LEN+1];
+                char mess_type_buffer[MESS_TYPE_LEN+1];
 
                 util_port = s_recv_UDP(listener_socket, socket_buffer, SOCK_MAX_LEN);
                 //Leggo il tipo del messaggio
-                sscanf(socket_buffer, "%s", mess_type_buff);
-                mess_type_buff[MESS_TYPE_LEN] = '\0';
+                sscanf(socket_buffer, "%s", mess_type_buffer);
+                mess_type_buffer[MESS_TYPE_LEN] = '\0';
 
                 if(util_port == server_port){
                     printf("Messaggio ricevuto dal server: %s\n", socket_buffer);
                     
                     //Arrivo nuova lista
-                    if(strcmp(mess_type_buff, "NBR_UPDT")==0){
+                    if(strcmp(mess_type_buffer, "NBR_UPDT")==0){
                         //Numero di nuovi neighbor
                         int count;
                         int temp_n[2];
@@ -302,7 +348,7 @@ int main(int argc, char** argv){
 
                         printf("Parametri prima di sscanf: %d e %d\n", temp_n[0], temp_n[1]);
 
-                        count = sscanf(socket_buffer, "%s %d %d", mess_type_buff, &temp_n[0], &temp_n[1]);
+                        count = sscanf(socket_buffer, "%s %d %d", mess_type_buffer, &temp_n[0], &temp_n[1]);
 
                         printf("Parametri dopo sscanf: %d e %d\n", temp_n[0], temp_n[1]);
                         
@@ -311,18 +357,18 @@ int main(int argc, char** argv){
                             case 1:
                                 //DEBUG
                                 printf("Sono rimasto l'unico peer\n");
-                                neighbors[0] = 0;
-                                neighbors[1] = 0;
+                                neighbor[0] = 0;
+                                neighbor[1] = 0;
                                 break;
                             case 2:
                                 printf("Un vicino con porta %d\n", temp_n[0]);
-                                neighbors[0] = temp_n[0];
-                                neighbors[1] = 0;
+                                neighbor[0] = temp_n[0];
+                                neighbor[1] = 0;
                                 break;
                             case 3:
                                 printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
-                                neighbors[0] = temp_n[0];
-                                neighbors[1] = temp_n[1];
+                                neighbor[0] = temp_n[0];
+                                neighbor[1] = temp_n[1];
                                 break;
                             default:
                                 printf("Questa riga di codice non dovrebbe mai andare in esecuzione\n");
@@ -331,7 +377,7 @@ int main(int argc, char** argv){
                     }
                 
                     //Notifica chiusura server
-                    if(strcmp(mess_type_buff, "SRV_EXIT")==0){
+                    if(strcmp(mess_type_buffer, "SRV_EXIT")==0){
                         printf("Il server sta per chiudere\n");
 
                         //Fa qualcosa coi dati
@@ -346,6 +392,17 @@ int main(int argc, char** argv){
                     }
                 }
             
+                else if(util_port == neighbor[0]){
+                    printf("Messaggio %s arrivato dal vicino %d\n", socket_buffer, util_port);
+                    if(mess_type_buffer == "AGGR_REQ"){
+                        ack_UDP(listener_socket, "AREQ_ACK", neighbor[0], socket_buffer, strlen(socket_buffer));
+                    }
+                }
+
+                //Messaggi: sempre verso peer con numero di porta piu' grande; verso opposto: strano
+                else if(util_port == neighbor[1]){
+                    printf("Messaggio %s arrivato stranamente dal vicino %d\n", socket_buffer, util_port);
+                }
             }
 
             FD_CLR(listener_socket, &readset);
