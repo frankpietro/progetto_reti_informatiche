@@ -145,7 +145,7 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
     while(!sent){
         //Invio lista
         do {
-            ret = sendto(socket, buffer, buff_l, 0, (struct sockaddr*)&recv_addr, recv_addr_len);
+            ret = sendto(socket, buffer, buff_l+1, 0, (struct sockaddr*)&recv_addr, recv_addr_len);
         } while(ret<0);
         
         //Mi preparo a ricevere un messaggio dal peer
@@ -238,5 +238,5 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
         }
     }
 
-    ack_UDP(socket, ack_type, ntohs(send_addr.sin_port), buffer, buff_l);
+    ack_UDP(socket, ack_type, ntohs(send_addr.sin_port), buffer, strlen(buffer));
 }

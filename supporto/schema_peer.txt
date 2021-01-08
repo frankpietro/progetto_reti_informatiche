@@ -73,7 +73,7 @@ se informazioni da stdin {
                 se contiene un numero positivo
                     lo scrivo su un file
                 se contiene 0 {
-
+                    //...............................................................................
                 }
             }
         }

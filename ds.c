@@ -117,20 +117,20 @@ int main(int argc, char** argv){
 
 
                 //Invio
-                send_UDP(server_socket, list_buffer, n+1, peer_port, "LIST_ACK");
+                send_UDP(server_socket, list_buffer, n, peer_port, "LIST_ACK");
 
                 //Invio eventuale lista aggiornata al primo peer
                 if(temp_port[0] != -1){
                     //Preparo la struttura che devo tirare su
                     get_list(temp_port[0], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[0]);
-                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[0], "UPDT_ACK");
+                    send_UDP(server_socket, list_update_buffer, n, temp_port[0], "UPDT_ACK");
                 }
 
                 if(temp_port[1] != -1){
                     get_list(temp_port[1], connected_peers+1, "NBR_UPDT", list_update_buffer, &n);
                     printf("Invio lista di update %s a %d\n", list_update_buffer, temp_port[1]);
-                    send_UDP(server_socket, list_update_buffer, n+1, temp_port[1], "UPDT_ACK");
+                    send_UDP(server_socket, list_update_buffer, n, temp_port[1], "UPDT_ACK");
                 }
 
                 //Incremento il numero di peer
@@ -170,12 +170,12 @@ int main(int argc, char** argv){
                 else {
                     get_list(temp_nbr_port[0], connected_peers-1, "NBR_UPDT", list_update, &n);
                     printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[0], list_update);
-                    send_UDP(server_socket, list_update, n+1, temp_nbr_port[0], "UPDT_ACK");
+                    send_UDP(server_socket, list_update, n, temp_nbr_port[0], "UPDT_ACK");
                     
                     if(temp_nbr_port[1] != -1){
                         get_list(temp_nbr_port[1], connected_peers-1, "NBR_UPDT", list_update, &n);
                         printf("Lista che sta per essere inviata a %d: %s\n", temp_nbr_port[1], list_update);
-                        send_UDP(server_socket, list_update, n+1, temp_nbr_port[1], "UPDT_ACK");
+                        send_UDP(server_socket, list_update, n, temp_nbr_port[1], "UPDT_ACK");
                     }
 
                 }
@@ -205,7 +205,7 @@ int main(int argc, char** argv){
                 ret = sprintf(entr_repl, "%s %d", "ENTR_REP", read_entries(type));
                 entr_repl[ret] = '\0';
 
-                send_UDP(server_socket, entr_repl, ret+1, peer_port, "EREP_ACK");
+                send_UDP(server_socket, entr_repl, ret, peer_port, "EREP_ACK");
                 
 
             }
@@ -261,7 +261,7 @@ int main(int argc, char** argv){
                 for(i=0; i<connected_peers; i++){
                     //Invia al peer il messaggio di exit
                     printf("Invio SRV_EXIT a %d\n", get_port(i));
-                    send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN+1, get_port(i), "S_XT_ACK");
+                    send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN, get_port(i), "S_XT_ACK");
                 }
                 //Aggiorno il numero di peer connessi (dovrebbe essere 0)
                 connected_peers = 0;

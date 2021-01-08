@@ -147,7 +147,7 @@ int main(int argc, char** argv){
                     server_port %= 65536;
                     
                     //Invio richiesta di connessione e attendo ACK
-                    send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN+1, server_port, "CONN_ACK");
+                    send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN, server_port, "CONN_ACK");
 
                     recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "NBR_LIST", "LIST_ACK");
 
@@ -198,9 +198,10 @@ int main(int argc, char** argv){
                     //retrieve_time();
                     insert_entry(type, quantity);
 
-                    sprintf(new_entry, "%s %c", "NEW_ENTR", type);
+                    ret = sprintf(new_entry, "%s %c", "NEW_ENTR", type);
+                    new_entry[ret] = '\0';
 
-                    send_UDP(listener_socket, new_entry, ENTR_W_TYPE+1, server_port, "ENEW_ACK");
+                    send_UDP(listener_socket, new_entry, ret, server_port, "ENEW_ACK");
 
                 }
 
@@ -243,9 +244,9 @@ int main(int argc, char** argv){
                     printf("Controlli superati!\n");
 
                     //Invio richiesta al server
-                    sprintf(entry_buffer, "%s %c", "ENTR_REQ", type);
-                    entry_buffer[ENTR_W_TYPE] = '\0';
-                    send_UDP(listener_socket, entry_buffer, ENTR_W_TYPE+1, server_port, "EREQ_ACK");
+                    ret = sprintf(entry_buffer, "%s %c", "ENTR_REQ", type);
+                    entry_buffer[ret] = '\0';
+                    send_UDP(listener_socket, entry_buffer, ret, server_port, "EREQ_ACK");
                     
                     //Ricevo risposta
                     recv_UDP(listener_socket, entry_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
@@ -284,7 +285,7 @@ int main(int argc, char** argv){
                             ret = sprintf(new_entry, "%s %d %d %c", "AGGR_REQ", my_port, tot_entr, type);
                             entry_buffer[ret] = '\0';
                             
-                            send_UDP(listener_socket, new_entry, ret+1, neighbor[0], "AREQ_ACK");
+                            send_UDP(listener_socket, new_entry, ret, neighbor[0], "AREQ_ACK");
                            
                             //Posso sfruttare new_entry
                             recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
@@ -322,7 +323,7 @@ int main(int argc, char** argv){
 
                     //Gestisce i propri dati
 
-                    send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN+1, server_port, "C_XT_ACK");
+                    send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN, server_port, "C_XT_ACK");
 
                     close(listener_socket);
                     _exit(0);
@@ -436,18 +437,18 @@ int main(int argc, char** argv){
                                 else {
                                     printf("Invio direttamente la risposta negativa a %d", neighbor[0]);
                                     strcpy(answer, "AGGR_REP 0");
-                                    send_UDP(listener_socket, answer, strlen(answer)+1, neighbor[0], "AREP_ACK");
+                                    send_UDP(listener_socket, answer, strlen(answer), neighbor[0], "AREP_ACK");
                                 }
                             }
                             else {
                                 if(neighbor[0] == req_port){
                                     printf("Invio risposta negativa a %d", neighbor[0]);
                                     strcpy(answer, "AGGR_REP 0");
-                                    send_UDP(listener_socket, answer, strlen(answer)+1, neighbor[0], "AREP_ACK");
+                                    send_UDP(listener_socket, answer, strlen(answer), neighbor[0], "AREP_ACK");
                                 }
                                 else {
                                     printf("Inoltro la richiesta a %d\n", neighbor[0]);
-                                    send_UDP(listener_socket, socket_buffer, strlen(socket_buffer)+1, neighbor[0], "AREQ_ACK");
+                                    send_UDP(listener_socket, socket_buffer, strlen(socket_buffer), neighbor[0], "AREQ_ACK");
                                 }
                             }
 
@@ -456,7 +457,7 @@ int main(int argc, char** argv){
                             printf("Ho la risposta che cerca il peer %d\n", req_port);
                             ret = sprintf(answer, "%s %d", "AGGR_REP", aggr);
                             answer[ret] = '\0';
-                            send_UDP(listener_socket, answer, ret+1, req_port, "AREP_ACK");
+                            send_UDP(listener_socket, answer, ret, req_port, "AREP_ACK");
                         }
                     }
                     //DEBUG
