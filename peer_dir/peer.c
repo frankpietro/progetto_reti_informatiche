@@ -293,6 +293,9 @@ int main(int argc, char** argv){
                         //Numero di nuovi neighbor
                         int count;
                         int temp_n[2];
+
+                        //Invio ACK
+                        ack_UDP(listener_socket, "UPDT_ACK", server_port, socket_buffer, strlen(socket_buffer));
                         
                         temp_n[0] = -1;
                         temp_n[1] = -1;
@@ -325,9 +328,6 @@ int main(int argc, char** argv){
                                 printf("Questa riga di codice non dovrebbe mai andare in esecuzione\n");
                                 break;
                         }
-
-                        //Invio ACK
-                        ack_UDP(listener_socket, "UPDT_ACK", server_port, "NBR_UPDT");
                     }
                 
                     //Notifica chiusura server
@@ -337,7 +337,7 @@ int main(int argc, char** argv){
                         //Fa qualcosa coi dati
 
                         //Invia ACK
-                        ack_UDP(listener_socket, "S_XT_ACK", server_port, "SRV_EXIT");
+                        ack_UDP(listener_socket, "S_XT_ACK", server_port, socket_buffer, strlen(socket_buffer));
 
                         //Chiude
                         printf("Chiusura peer\n");

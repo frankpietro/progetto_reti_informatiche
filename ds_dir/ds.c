@@ -88,7 +88,7 @@ int main(int argc, char** argv){
                 char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
                 
                 //Ack dell'arrivo della richiesta
-                ack_UDP(server_socket, "CONN_ACK", peer_port, "CONN_REQ");
+                ack_UDP(server_socket, "CONN_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 
                 //Inserisco il peer nella lista
                 if(!isIn(peer_port)){
@@ -144,7 +144,7 @@ int main(int argc, char** argv){
                 char list_update[LIST_MAX_LEN];
                 int n;
 
-                ack_UDP(server_socket, "C_XT_ACK", peer_port, "CLT_EXIT");
+                ack_UDP(server_socket, "C_XT_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 printf("Ricevuto messaggio di richiesta di uscita da %d\n", peer_port);
 
                 //Se il peer per qualche motivo non e' in lista non faccio nulla
@@ -187,7 +187,9 @@ int main(int argc, char** argv){
             //Inserita nuova entry su qualche peer
             if(strcmp(recv_buffer, "NEW_ENTR") == 0){
                 char type;
-                ack_UDP(server_socket, "ENEW_ACK", peer_port, "NEW_ENTR");
+
+                ack_UDP(server_socket, "ENEW_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+
                 sscanf(socket_buffer, "%s %c", recv_buffer, &type);
                 
                 add_entry(type);
@@ -197,7 +199,7 @@ int main(int argc, char** argv){
                 char type;
                 char entr_repl[MAX_ENTRY_REP];
                 int ret;
-                ack_UDP(server_socket, "EREQ_ACK", peer_port, "ENTR_REQ");
+                ack_UDP(server_socket, "EREQ_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 sscanf(socket_buffer, "%s %c", recv_buffer, &type);
 
                 ret = sprintf(entr_repl, "%s %d", "ENTR_REP", read_entries(type));
