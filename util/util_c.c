@@ -202,6 +202,13 @@ void write_aggr(int count, int sum, char type){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
 
+    printf("Numero di ");
+    if(type == 't')
+        printf("tamponi");
+    else
+        printf("nuovi casi");
+    printf(": %d\n", sum);
+
     retrieve_time();
 
     sprintf(filename, "%s%c_%s_%d.txt", "./peer_dir/aggr_", type, current_d, my_port);

@@ -217,6 +217,12 @@ int main(int argc, char** argv){
                     char entry_buffer[MAX_ENTRY_REP];
                     char new_entry[MAX_ENTRY_UPDATE];
                     
+                    //Se peer non connesso non faccio nulla
+                    if(server_port == -1){
+                        printf("Peer non connesso\n");
+                        continue;
+                    }
+
                     ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bounds[0], bounds[1]);
                     //Numero di parametri
                     if(!(ret == 3 || ret == 5)){
@@ -258,21 +264,16 @@ int main(int argc, char** argv){
                     //Se ho tutti i dati che servono, eseguo il calcolo
                     if(tot_entr == peer_entr){
                         sum_entr = sum_entries(type);
-                        printf("Numero di ");
-                        if(type == 't')
-                            printf("tamponi");
-                        else
-                            printf("nuovi casi");
-                        printf(": %d\n", sum_entr);
                         
                         write_aggr(tot_entr, sum_entr, type);
                         continue;
                     }
                     
+                    //Altrimenti
                     else {
                         //Se non ho vicini non posso calcolare nulla
                         if(neighbor[0] == -1 && neighbor[1] == -1){
-                            printf("Errore, impossibile calcolare il dato richiesto\n");
+                            printf("Errore insolubile, impossibile calcolare il dato richiesto\n");
                             continue;
                         }
                         else {
@@ -288,8 +289,18 @@ int main(int argc, char** argv){
                             //Posso sfruttare new_entry
                             recv_UDP(listener_socket, new_entry, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
 
-                            //Gestisco la risposta
+                            printf("Ricevuto %s\n", new_entry);
 
+                            //Posso riciclare il buffer command
+                            sscanf(new_entry, "%s %d", command, &sum_entr);
+                            
+                            if(sum_entr != 0){
+                                printf("Ho ottenuto il dato che cercavo\n");
+                                write_aggr(tot_entr, sum_entr, type);
+                            }
+                            else{
+                                printf("Nessuno ha gia' pronto il dato cercato\n");
+                            }
                             //send_UDP(listener_socket, "ENTR_FLD", MESS_TYPE_LEN+1, neighbor[0], "EFLD_ACK");
                         }
                     }
@@ -364,13 +375,13 @@ int main(int argc, char** argv){
                             case 1:
                                 //DEBUG
                                 printf("Sono rimasto l'unico peer\n");
-                                neighbor[0] = 0;
-                                neighbor[1] = 0;
+                                neighbor[0] = -1;
+                                neighbor[1] = -1;
                                 break;
                             case 2:
                                 printf("Un vicino con porta %d\n", temp_n[0]);
                                 neighbor[0] = temp_n[0];
-                                neighbor[1] = 0;
+                                neighbor[1] = -1;
                                 break;
                             case 3:
                                 printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
@@ -429,7 +440,15 @@ int main(int argc, char** argv){
                                 }
                             }
                             else {
-                                printf("Work in progress\n");
+                                if(neighbor[0] == req_port){
+                                    printf("Invio risposta negativa a %d", neighbor[0]);
+                                    strcpy(answer, "AGGR_REP 0");
+                                    send_UDP(listener_socket, answer, strlen(answer)+1, neighbor[0], "AREP_ACK");
+                                }
+                                else {
+                                    printf("Inoltro la richiesta a %d\n", neighbor[0]);
+                                    send_UDP(listener_socket, socket_buffer, strlen(socket_buffer)+1, neighbor[0], "AREQ_ACK");
+                                }
                             }
 
                         }

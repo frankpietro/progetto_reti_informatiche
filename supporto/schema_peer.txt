@@ -31,6 +31,8 @@ se informazioni dal socket {
                         gli giro il messaggio arrivato a me
                 }
             }
+            se ho il dato
+                lo invio direttamente a chi lo ha chiesto
         }
     }
 }

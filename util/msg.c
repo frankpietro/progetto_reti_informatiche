@@ -238,5 +238,5 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
         }
     }
 
-    ack_UDP(socket, ack_type, send_port, buffer, buff_l);
+    ack_UDP(socket, ack_type, ntohs(send_addr.sin_port), buffer, buff_l);
 }
