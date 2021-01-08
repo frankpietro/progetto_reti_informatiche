@@ -33,6 +33,10 @@ void comandi_client(){
     printf("stop --> richiede disconnessione dalla rete\n");
 }
 
+/*
+Validazione input get
+*/
+
 /*Controllo che la seconda non sia minore della prima in caso di totale
 e sia strettamente maggiore in caso di variazione*/
 int is_real_period(int *date1, int *date2, char aggr){
@@ -112,6 +116,11 @@ int check_dates(char *date1, char *date2, char aggr){
     return 1;
 }
 
+/*
+Fine validazione input get
+*/
+
+//Inserisce entry nel database
 void insert_entry(char type, int quantity){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
@@ -129,6 +138,7 @@ void insert_entry(char type, int quantity){
     printf("Entry inserita!\n");
 }
 
+//Conta il numero di entries presente nel proprio database
 int count_entries(char type){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
@@ -201,4 +211,26 @@ void write_aggr(int count, int sum, char type){
     fd = fopen(filename, "w");
     fprintf(fd, "%d %d", count, sum);
     fclose(fd);
+}
+
+//Controlla se il peer ha a disposizione un aggregato gia' pronto: se si' ritorna il dato richiesto
+int check_aggr(int entries, char type){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    int count;
+    int sum;
+
+    retrieve_time();
+
+    sprintf(filename, "%s%c_%s_%d.txt", "./peer_dir/aggr_", type, current_d, my_port);
+
+    //printf("Filename: %s\n", filename);
+
+    fd = fopen(filename, "r");
+    if(fd == NULL)
+        return 0;
+
+    fscanf(fd, "%d %d", &count, &sum);
+    fclose(fd);
+    return (count == entries) ? sum : 0;
 }

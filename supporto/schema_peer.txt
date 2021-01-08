@@ -17,7 +17,21 @@ se informazioni dal socket {
         }
     }
     se da un vicino {
-
+        se richiesta di aggregato {
+            invio ack
+            leggo i dati arrivati
+            controllo se ho il dato richiesto (aggregato del tipo richiesto calcolato sulle entry richieste)
+            se non ho il dato {
+                se ho un vicino solo
+                    invio reply con 0 (e' lui che ha fatto la richiesta)
+                se ho piu' di un vicino {
+                    se il prossimo vicino e' quello da cui e' partita la richiesta
+                        invio reply con 0
+                    altrimenti
+                        gli giro il messaggio arrivato a me
+                }
+            }
+        }
     }
 }
 
@@ -52,12 +66,12 @@ se informazioni da stdin {
             se ho zero vicini
                 impossibile ottenere il dato richiesto
             altrimenti {
-                invio richiesta dati aggregati
+                invio richiesta dati aggregati con nome porta, tipo e numero entries attuali
                 ricevo risposta
                 se contiene un numero positivo
                     lo scrivo su un file
                 se contiene 0 {
-                    
+
                 }
             }
         }
