@@ -94,7 +94,7 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
         //Se arriva qualcosa
         if(FD_ISSET(socket, &readset)){
             //Leggo cosa ho ricevuto
-            ret = recvfrom(socket, recv_buffer, unacked_len+1, 0, (struct sockaddr*)&util_addr, &util_len);
+            ret = recvfrom(socket, recv_buffer, MAX_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
             //Se ho ricevuto lo stesso identico messaggio
             if(util_addr.sin_port == send_port && util_addr.sin_addr.s_addr == send_addr.sin_addr.s_addr && (strncmp(recv_buffer, unacked, unacked_len)==0)){
                 //Riinvio l'ack tornando a inizio while(!received)

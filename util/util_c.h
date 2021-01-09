@@ -8,3 +8,4 @@ int check_aggr(int,char);
 void wait_for_entries(int,int,char);
 void send_missing_entries(int,char);
 int check_lock(int);
+int get_lock(int);

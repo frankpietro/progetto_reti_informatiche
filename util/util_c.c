@@ -352,11 +352,27 @@ int check_lock(int server_port){
     char command[MESS_TYPE_LEN];
     int flag;
 
-    //Blocco tutti i peer prima di cominciare l'operazione
+    //Invio richiesta al server
     send_UDP(listener_socket, "ISLOCKED", MESS_TYPE_LEN, server_port, "ISLK_ACK");
-    //Aspetto il segnale per alzare il flag
+    //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
     recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
     sscanf(lock_buffer, "%s %d", command, &flag);
-    //Se c'e' qualche altro peer che sta eseguendo la get, mi fermo
+    //Lo ritorno
     return flag;
 }
+
+//Controlla che nessuno stia eseguendo la get da una get --> acquisisce mutua esclusione
+int get_lock(int server_port){
+    char lock_buffer[MAX_LOCK_LEN];
+    char command[MESS_TYPE_LEN];
+    int flag;
+
+    //Invio richiesta al server
+    send_UDP(listener_socket, "LOCK_GET", MESS_TYPE_LEN, server_port, "LOCK_ACK");
+    //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
+    sscanf(lock_buffer, "%s %d", command, &flag);
+    //Lo ritorno
+    return flag;
+}
+

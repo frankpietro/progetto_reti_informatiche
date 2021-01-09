@@ -140,6 +140,11 @@ int main(int argc, char** argv){
 
                 server_port %= 65536;
                 
+                if(check_lock(server_port)){
+                    printf("Comando %s non eseguibile adesso, riprova piu' tardi\n", command);
+                    continue;
+                }
+
                 //Invio richiesta di connessione e attendo ACK
                 send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN, server_port, "CONN_ACK");
 
@@ -241,15 +246,9 @@ int main(int argc, char** argv){
 
                 printf("Controlli superati!\n");
 
-                //Blocco tutti i peer prima di cominciare l'operazione
-                send_UDP(listener_socket, "LOCK_GET", MESS_TYPE_LEN, server_port, "LOCK_ACK");
-                //Aspetto il segnale per alzare il flag
-                recv_UDP(listener_socket, get_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
-                sscanf(get_buffer, "%s %d", command, &flag);
                 //Se c'e' qualche altro peer che sta eseguendo la get, mi fermo
-                if(flag){
-                    printf("Comando non eseguibile in questo momento, riprova piu' tardi\n");
-                    flag = 0;
+                if(get_lock(server_port)){
+                    printf("Comando get non eseguibile in questo momento, riprova piu' tardi\n");
                     continue;
                 }
 

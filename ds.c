@@ -256,6 +256,7 @@ int main(int argc, char** argv){
                 char type;
                 char entr_repl[MAX_ENTRY_REP];
                 int ret;
+                
                 ack_UDP(server_socket, "EREQ_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 sscanf(socket_buffer, "%s %c", recv_buffer, &type);
 

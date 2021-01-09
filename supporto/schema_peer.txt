@@ -73,13 +73,13 @@ se informazioni da stdin {
         }
         se add {
             controllo che il peer sia connesso
-            controllo che nessuno stia eseguendo una get
             controllo che i dati siano corretti
-            aggiorno l'orario
-            inserisco l'entry in un file chiamato <data>_<porta>.txt
+            controllo che nessuno stia eseguendo una get
             invio messaggio del tipo giusto di nuova entry al server
+            inserisco l'entry in un file chiamato <data>_<porta>.txt
         }
         se get {
+            controllo che peer sia connesso
             controllo gli input
             acquisisco mutua esclusione
             se non posso acquisirla
