@@ -1,10 +1,16 @@
-all: ./ds ./peer
+all: ./ds ./peer ./time
+
+./time: ./time.o ./util/msg.o ./util/retr_time.o ./util/peer_file.o
+	gcc -Wall ./time.o ./util/msg.o ./util/retr_time.o ./util/peer_file.o -o ./time
 
 ./peer: ./peer.o ./util/msg.o ./util/util_c.o ./util/retr_time.o
 	gcc -Wall ./peer.o ./util/msg.o ./util/util_c.o ./util/retr_time.o -o ./peer
 
 ./ds: ./ds.o ./util/peer_file.o ./util/msg.o ./util/util_s.o ./util/retr_time.o
 	gcc -Wall ./ds.o ./util/peer_file.o ./util/msg.o ./util/util_s.o ./util/retr_time.o -o ./ds
+
+./time.o: ./time.c ./util/msg.h ./util/retr_time.h ./util/peer_file.h
+	gcc -Wall -c ./time.c -o ./time.o
 
 ./peer.o: ./peer.c ./util/msg.h ./util/util_c.h
 	gcc -Wall -c ./peer.c -o ./peer.o

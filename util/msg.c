@@ -12,8 +12,11 @@
 #define MESS_TYPE_LEN 8
 #define MAX_RECV 40
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
+#define USEC 30000
 
 #define LOCALHOST "127.0.0.1"
+
+int flag;
 
 void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     memset(addr_p, 0, sizeof((*addr_p)));
@@ -83,7 +86,7 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
 
         //Attesa di mezzo secondo
         util_tv.tv_sec = 0;
-        util_tv.tv_usec = 500000;
+        util_tv.tv_usec = USEC;
         //Mi metto per un secondo solo in ascolto sul socket
         //Solo in ascolto di un'eventuale copia del messaggio
         FD_ZERO(&readset);
@@ -105,6 +108,11 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
             else {
                 received = 1;
                 printf("[A] Arrivato un messaggio %s inatteso da %d dopo l'invio di %s a %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, send_port);
+                if(strcmp(recv_buffer, "FLAG_SET") == 0){ 
+                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, util_len);
+                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
+                    flag = 1;
+                }
             }
 
             FD_CLR(socket, &readset);
@@ -153,7 +161,7 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
         FD_SET(socket, &readset);
         //Imposto il timeout a mezzo secondo
         util_tv.tv_sec = 0;
-        util_tv.tv_usec = 500000;
+        util_tv.tv_usec = USEC;
         //Aspetto l'ack
         ret = select(socket+1, &readset, NULL, NULL, &util_tv);
 
@@ -171,6 +179,11 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
             //Ignoro qualunque altro messaggio
             else {
                 printf("[S] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), acked, recv_port);
+                if(strcmp(recv_buffer, "FLAG_SET") == 0){ 
+                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, util_len);
+                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
+                    flag = 1;
+                }
             }
             
             FD_CLR(socket, &readset);
@@ -205,7 +218,7 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
     while(!ok){
         //Attesa di mezzo secondo
         util_tv.tv_sec = 0;
-        util_tv.tv_usec = 500000;
+        util_tv.tv_usec = USEC;
         //Mi metto per un secondo solo in ascolto sul socket
         //Solo in ascolto di un'eventuale copia del messaggio
         FD_ZERO(&readset);
@@ -232,6 +245,12 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
                     printf("chiunque, scartato\n");
                 else
                     printf("%d, scartato\n", send_port);
+
+                if(strcmp(temp_buffer, "FLAG_SET") == 0){ 
+                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&send_addr, send_addr_len);
+                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
+                    flag = 1;
+                }
             }
 
             FD_CLR(socket, &readset);

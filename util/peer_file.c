@@ -9,15 +9,25 @@
 #include <unistd.h>
 #include <time.h>
 
+int connected_peers;
+
 //Trova il numero di porta di un peer, data la sua posizione
 int get_port(int pos){
     FILE *fp;
     int port;
     char temp[INET_ADDRSTRLEN];
+    int ret;
 
     fp = fopen("./ds_dir/peer_addr.txt", "r");
-    while(pos-- >= 0)
-        fscanf(fp, "%s %d", temp, &port);
+    if(fp == NULL)
+        return -1;
+        
+    while(pos-- >= 0){
+        ret = fscanf(fp, "%s %d", temp, &port);
+        
+        if(ret == EOF)
+            return -1;
+    }
     
     return port;
 }

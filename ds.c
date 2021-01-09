@@ -34,7 +34,7 @@ char command_buffer[MAX_COMMAND];   //Buffer su cui salvare i comandi provenient
 char socket_buffer[SOCK_MAX_LEN];
 char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
 
-int connected_peers;    //Numero di peers connessi alla rete
+extern int connected_peers;    //Numero di peers connessi alla rete
 
 //Gestione input da stdin oppure da socket
 fd_set master;
@@ -142,6 +142,7 @@ int main(int argc, char** argv){
 
                 //Incremento il numero di peer
                 connected_peers++;
+                printf("Peer connessi: %d\n", connected_peers);
             }
 
             //Richiesta di uscita

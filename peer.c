@@ -56,7 +56,7 @@ fd_set readset;
 int fdmax;
 
 //Blocco dello stdin durante operazioni lunghe
-int flag;
+extern int flag;
 
 
 int main(int argc, char** argv){
@@ -96,15 +96,15 @@ int main(int argc, char** argv){
             //Richiede comando
             char command[MAX_COMMAND];
 
+            fgets(stdin_buff, MAX_IN, stdin);
+            sscanf(stdin_buff, "%s", command);
+
             //Se flag settato, non sono accettati comandi da stdin (durante una get o quando si cambiano i registri)
             if(flag){
                 printf("Comandi da stdin non accettati, riprovare piu' tardi\n");
                 FD_CLR(0, &readset);
                 continue;
             }
-
-            fgets(stdin_buff, MAX_IN, stdin);
-            sscanf(stdin_buff, "%s", command);
 
             /*
                 HELP
@@ -547,9 +547,18 @@ int main(int argc, char** argv){
             
             }
 
-        }
+            else {
+                printf("Ricevuto messaggio %s da un processo ignoto %d\n", socket_buffer, util_port);
+                if(strcmp(mess_type_buffer, "FLAG_SET") == 0){
+                    ack_UDP(listener_socket, "FSET_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    printf("Ricevuto contatto dal time server %d\n", util_port);
+                    flag = (flag+1)%2;
+                }
+            }
 
-        FD_CLR(listener_socket, &readset);
+            FD_CLR(listener_socket, &readset);
+
+        }
     
     }
 
