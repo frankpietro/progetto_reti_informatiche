@@ -34,6 +34,17 @@ se informazioni dal socket {
             }
         }
     }
+    se richiesta di lock per get mutuamente esclusiva {
+        invio ack
+        invio messaggio con autorizzazione o meno ad acquisire mutex
+        se nessun peer sta eseguendo qualcosa in mutua esclusione {
+            memorizzo il numero del peer che sta eseguendo la get
+        }
+    }
+    se richiesta di unlock per get mutuamente esclusiva {
+        invio ack
+        cancello il numero del peer che stava eseguendo la get
+    }
     se richiesta numero entries {
         invio ack
         cerco il numero da inviare

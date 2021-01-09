@@ -21,6 +21,7 @@
 #define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
 #define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
+#define MAX_LOCK_LEN 14
 
 extern int my_port;
 extern char current_d[DATE_LEN+1];
@@ -321,6 +322,10 @@ void send_missing_entries(int req_port, char type){
     printf("Scorro tutte le entries\n");
 
     fd = fopen(filename, "r");
+    if(fd == NULL){
+        printf("Nessuna entry\n");
+        return;
+    }
     //Scorro tutte le entries
     while(fscanf(fd, "%s %c %d %s", e_time, &e_type, &e_quantity, e_peers) != EOF){
         //Se ne trovo una del tipo richiesto e non posseduta dal richiedente
@@ -339,4 +344,19 @@ void send_missing_entries(int req_port, char type){
     
     printf("Fine delle entries da inviare\n");
 
+}
+
+//Controlla che nessuno stia eseguendo la get
+int check_lock(int server_port){
+    char lock_buffer[MAX_LOCK_LEN];
+    char command[MESS_TYPE_LEN];
+    int flag;
+
+    //Blocco tutti i peer prima di cominciare l'operazione
+    send_UDP(listener_socket, "ISLOCKED", MESS_TYPE_LEN, server_port, "ISLK_ACK");
+    //Aspetto il segnale per alzare il flag
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
+    sscanf(lock_buffer, "%s %d", command, &flag);
+    //Se c'e' qualche altro peer che sta eseguendo la get, mi fermo
+    return flag;
 }

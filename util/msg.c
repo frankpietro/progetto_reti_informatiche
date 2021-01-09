@@ -65,7 +65,7 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
     socklen_t send_addr_len;
     struct sockaddr_in util_addr;
     socklen_t util_len;
-    char recv_buffer[unacked_len];
+    char recv_buffer[unacked_len+1];
     struct timeval util_tv;
     fd_set readset;
 

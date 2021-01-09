@@ -15,6 +15,14 @@ se informazioni dal socket {
             chiudo il socket
             esco
         }
+        se FLAG_SET {
+            invio ack
+            setto il flag
+        }
+        se FLAG_RST {
+            invio ack
+            resetto il flag
+        }
     }
     se da un vicino {
         se richiesta di aggregato {
@@ -51,58 +59,70 @@ se informazioni dal socket {
 }
 
 se informazioni da stdin {
-    se help
-        stampo i comandi
-    se start {
-        invio richiesta di connessione al server
-        ricevo la lista
-        invio ack
-        aggiungo i vicini
+    se flag settato
+        rifiuto comandi da stdin
+    altrimenti {
+        se help
+            stampo i comandi
+        se start {
+            invio richiesta di connessione al server
+            ricevo la lista
+            invio ack
+            aggiungo i vicini
 
-    }
-    se add {
-        controllo che il peer sia connesso
-        controllo che i dati siano corretti
-        aggiorno l'orario
-        inserisco l'entry in un file chiamato <data>_<porta>.txt
-        invio messaggio del tipo giusto di nuova entry al server
-    }
-    se get {
-        controllo gli input
-        invio richiesta numero entries del giorno al server
-        ricevo numero entries del giorno
-        se zero
-            niente da calcolare
-        altrimenti se uguale a quello posseduto {
-            calcolo il totale
-            lo scrivo su un file
         }
-        altrimenti {
-            se ho zero vicini
-                impossibile ottenere il dato richiesto
+        se add {
+            controllo che il peer sia connesso
+            controllo che nessuno stia eseguendo una get
+            controllo che i dati siano corretti
+            aggiorno l'orario
+            inserisco l'entry in un file chiamato <data>_<porta>.txt
+            invio messaggio del tipo giusto di nuova entry al server
+        }
+        se get {
+            controllo gli input
+            acquisisco mutua esclusione
+            se non posso acquisirla
+                esco dalla get
+            invio richiesta numero entries del giorno al server
+            ricevo numero entries del giorno
+            se zero
+                niente da calcolare
+            altrimenti se uguale a quello posseduto {
+                calcolo il totale
+                lo scrivo su un file
+            }
             altrimenti {
-                invio richiesta dati aggregati con nome porta, tipo e numero entries attuali
-                ricevo risposta
-                se contiene un numero positivo
-                    lo scrivo su un file
-                se contiene 0 {
-                    invio richiesta di nuove entrate con tipo e mia porta
-                    per ogni entrata che mi manca {
-                        ricevo il messaggio
-                        controllo che non sia corrotto
-                        aggiungo la nuova entrata alle mie
+                se ho zero vicini
+                    impossibile ottenere il dato richiesto
+                altrimenti {
+                    invio richiesta dati aggregati con nome porta, tipo e numero entries attuali
+                    ricevo risposta
+                    se contiene un numero positivo
+                        lo scrivo su un file
+                    se contiene 0 {
+                        invio richiesta di nuove entrate con tipo e mia porta
+                        per ogni entrata che mi manca {
+                            ricevo il messaggio
+                            controllo che non sia corrotto
+                            aggiungo la nuova entrata alle mie
+                        }
+                        ricevo messaggio di fine trasferimento entrate
+                        calcolo il totale
+                        lo scrivo su un file
                     }
-                    ricevo messaggio di fine trasferimento entrate
-                    calcolo il totale
-                    lo scrivo su un file
                 }
             }
+            rilascio mutua esclusione
         }
-    }
-    se stop {
-        //......................................................................................................................
-        invio messaggio di uscita
-        chiudo il socket
-        esco
+        se stop {
+            se il peer e' connesso {
+                controllo che nessuno stia eseguendo una get
+                //......................................................................................................................
+                invio messaggio di uscita
+            }
+            chiudo il socket
+            esco
+        }
     }
 }

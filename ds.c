@@ -23,6 +23,7 @@
 #define MAX_CONNECTED_PEERS 100
 #define SOCK_MAX_LEN 30
 #define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
+#define MAX_LOCK_LEN 14
 
 //Variabili
 int server_socket;  //Socket su cui il server riceve messaggi dai peer
@@ -40,7 +41,11 @@ fd_set master;
 fd_set readset;
 int fdmax;
 
+//Mutua esclusione per la get
+int flag_peer;
+
 int main(int argc, char** argv){
+    flag_peer = 0;
     //Pulizia set
     FD_ZERO(&master);
     FD_ZERO(&readset);
@@ -195,6 +200,58 @@ int main(int argc, char** argv){
                 add_entry(type);
             }
 
+            //Controllo di blocco (se qualcuno sta eseguendo una get, nessuna operazione concessa)
+            if(strcmp(recv_buffer, "ISLOCKED") == 0){
+                char mutex_buffer[MAX_LOCK_LEN];
+                int len;
+                //Invio ack
+                ack_UDP(server_socket, "ISLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
+                if(flag_peer)
+                    printf("Peer %d sta eseguendo la get\n", flag_peer);
+                
+                len = sprintf(mutex_buffer, "%s %d", "FLAG_MTX", flag_peer);
+                mutex_buffer[len] = '\0';
+
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "FMTX_ACK");
+            }
+
+            //Richiesta di blocco (mutua esclusione per la get)
+            if(strcmp(recv_buffer, "LOCK_GET") == 0){
+                char mutex_buffer[MAX_LOCK_LEN];
+                int len;
+                //Invio ack
+                ack_UDP(server_socket, "LOCK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
+                if(flag_peer)
+                    printf("Operazione gia' richiesta dal peer %d\n", flag_peer);
+                
+                len = sprintf(mutex_buffer, "%s %d", "FLAG_MTX", flag_peer);
+                mutex_buffer[len] = '\0';
+
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "FMTX_ACK");
+                
+                if(!flag_peer)
+                    flag_peer = peer_port;
+            }
+
+            //Richiesta di sblocco (mutua esclusione per la get)
+            if(strcmp(recv_buffer, "UNLK_GET") == 0){
+                //Invio ack
+                ack_UDP(server_socket, "UNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Questa parte non dovrebbe essere mai eseguita
+                if(!flag_peer){
+                    printf("Errore, apparentemente nessuno sta lavorando in mutua esclusione\n");
+                    continue;
+                }
+
+                flag_peer = 0;
+            }
+
+            //Richiesta del numero totale di entries
             if(strcmp(recv_buffer, "ENTR_REQ") == 0){
                 char type;
                 char entr_repl[MAX_ENTRY_REP];
@@ -206,8 +263,6 @@ int main(int argc, char** argv){
                 entr_repl[ret] = '\0';
 
                 send_UDP(server_socket, entr_repl, ret, peer_port, "EREP_ACK");
-                
-
             }
 
             FD_CLR(server_socket, &readset);
