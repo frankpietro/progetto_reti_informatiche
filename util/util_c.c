@@ -301,7 +301,7 @@ void wait_for_entries(int peer_entr, int tot_entr, char type){
 }
 
 //Invia tutte le entries che mancano al peer richiedente e che sono nel suo database
-void send_missing_entries(int req_port, char type){
+void send_missing_entries(int req_port, char type, char* header, char* ack){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
     char e_time[TIME_LEN];
@@ -329,21 +329,94 @@ void send_missing_entries(int req_port, char type){
     //Scorro tutte le entries
     while(fscanf(fd, "%s %c %d %s", e_time, &e_type, &e_quantity, e_peers) != EOF){
         //Se ne trovo una del tipo richiesto e non posseduta dal richiedente
-        if(e_type == type && strstr(e_peers, check) == NULL){
+        if((e_type == type || type == 'a') && strstr(e_peers, check) == NULL){
             printf("Trovata entry da inviare\n");
             //Aggiungo il suo numero di porta tra i peer che possiedono quella entry
             strcat(e_peers, check);
             //Gliela mando
-            ret = sprintf(whole_entry, "%s %s %c %d %s", "EP2P_REP", e_time, e_type, e_quantity, e_peers);
+            ret = sprintf(whole_entry, "%s %s %c %d %s", header, e_time, e_type, e_quantity, e_peers);
             whole_entry[ret] = '\0';
-            send_UDP(listener_socket, whole_entry, ret, req_port, "2REP_ACK");
+            send_UDP(listener_socket, whole_entry, ret, req_port, ack);
         }
     }
 
     fclose(fd);
     
     printf("Fine delle entries da inviare\n");
+}
 
+
+//Invia tutte le entries che mancano al peer richiedente e che sono nel suo database
+void send_double_missing_entries(){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    char e_time[TIME_LEN];
+    char e_type;
+    int e_quantity;
+    char e_peers[6*MAX_CONNECTED_PEERS];
+    char whole_entry[MAX_ENTRY_UPDATE];
+    char check1[7];
+    char check2[7];
+    char check3[13];
+    int ret;
+    char *bool1, *bool2;
+
+    if(neighbor[0] == -1)               
+        return;                
+
+    if(neighbor[1] == -1){
+        send_missing_entries(neighbor[0], 'a', "EP2P_NEW", "2NEW_ACK");
+        return;
+    }
+
+    ret = sprintf(check1, "%d;", neighbor[0]);
+    check1[ret] = '\0';
+    ret = sprintf(check2, "%d;", neighbor[1]);
+    check2[ret] = '\0';
+    ret = sprintf(check3, "%d;%d;", neighbor[0], neighbor[1]);
+    check3[ret] = '\0';
+
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+
+    printf("Scorro tutte le entries\n");
+
+    fd = fopen(filename, "r");
+    if(fd == NULL){
+        printf("Nessuna entry\n");
+        return;
+    }
+    //Scorro tutte le entries
+    while(fscanf(fd, "%s %c %d %s", e_time, &e_type, &e_quantity, e_peers) != EOF){
+            printf("Trovata entry da inviare\n");
+            //Decido a quale peer va inviata
+            bool1 = strstr(e_peers, check1);
+            bool2 = strstr(e_peers, check2);
+
+            //Caso 1: manca a entrambi
+            if(bool1 == NULL && bool2 == NULL)
+                strcat(e_peers, check3);
+            //Caso 2: manca a 2
+            if(bool1 != NULL && bool2 == NULL)
+                strcat(e_peers, check2);
+            //Caso 3: manca a 1
+            if(bool1 == NULL && bool2 != NULL)
+                strcat(e_peers, check1);
+
+            //Mando la entry a chi di dovere
+            ret = sprintf(whole_entry, "%s %s %c %d %s", "EP2P_NEW", e_time, e_type, e_quantity, e_peers);
+            whole_entry[ret] = '\0';
+            if(bool1 == NULL)
+                send_UDP(listener_socket, whole_entry, ret, neighbor[0], "2NEW_ACK");
+            if(bool2 == NULL)
+                send_UDP(listener_socket, whole_entry, ret, neighbor[1], "2NEW_ACK");
+        
+    }
+
+    fclose(fd);
+    
+    printf("Fine delle entries da inviare\n");
 }
 
 //Controlla che nessuno stia eseguendo la get

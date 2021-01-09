@@ -202,6 +202,7 @@ int main(int argc, char** argv){
 
             //Controllo di blocco (se qualcuno sta eseguendo una get, nessuna operazione concessa)
             if(strcmp(recv_buffer, "ISLOCKED") == 0){
+                
                 char mutex_buffer[MAX_LOCK_LEN];
                 int len;
                 //Invio ack

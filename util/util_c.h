@@ -1,11 +1,13 @@
 void comandi_client();
 int check_dates(char*,char*,char);
 void insert_entry(char,int);
+void insert_entry_string(char*);
 int count_entries(char);
 int sum_entries(char);
 void write_aggr(int,int,char);
 int check_aggr(int,char);
 void wait_for_entries(int,int,char);
-void send_missing_entries(int,char);
+void send_missing_entries(int,char,char*, char*);
+void send_double_missing_entries();
 int check_lock(int);
 int get_lock(int);

@@ -15,14 +15,9 @@ int main(){
     struct sockaddr_in server_addr;     //Struttura per gestire il socket
     int ret;    //Variabile di servizio per funzioni che ritornano un intero di controllo
 */
-    int prova;
     char s[200] = "5001,5002,5003,";
-    strcat(s, "5400,");
-    if(strstr(s, "5002,"))
-        printf("Funziona\n");
-    
-    sscanf(s, "%d", &prova);
-    printf("Primo intero: %d", prova);
+
+    printf("%s\n", s+5);
 
     return 0;
 }

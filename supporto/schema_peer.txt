@@ -55,6 +55,10 @@ se informazioni dal socket {
             altrimenti
                 inoltro al vicino 0 il messaggio di richiesta
         }
+        se entry mancante {
+            invio ack
+            la inserisco nel file
+        }
     }
 }
 
@@ -116,11 +120,11 @@ se informazioni da stdin {
             rilascio mutua esclusione
         }
         se stop {
-            se il peer e' connesso {
-                controllo che nessuno stia eseguendo una get
-                //......................................................................................................................
-                invio messaggio di uscita
-            }
+            controllo che nessuno stia eseguendo una get
+            controllo che il peer sia connesso
+            per ogni vicino
+                invio le entries che gli mancano
+            invio messaggio di uscita
             chiudo il socket
             esco
         }

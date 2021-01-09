@@ -21,7 +21,7 @@
 #define DATE_UPDATE_LEN 28
 #define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
 #define LIST_MAX_LEN 21 //Massima lunghezza lista di vicini
-#define SOCK_MAX_LEN 30
+#define SOCK_MAX_LEN 630
 #define MAX_COMMAND 6
 #define MAX_FILENAME_LEN 20
 #define MAX_CONNECTED_PEERS 100
@@ -343,15 +343,19 @@ int main(int argc, char** argv){
                     printf("Comando %s non eseguibile, riprova piu' tardi\n", command);
                     continue;
                 }
+/*
+                if(check_stop(server_port)){
+                    printf("Un vicino sta uscendo dalla rete, attendi\n");
+                }*/
 
                 //Controllo che la connessione esista
                 if(server_port == -1)
                     printf("Il peer non e' connesso al DS. Uscita\n");
                 
-                else {
-                    
-                    //Gestisce i propri dati
-
+                else{
+                    //Invio eventuali entries mancanti agli eventuali vicini
+                    send_double_missing_entries();
+                        
                     send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN, server_port, "C_XT_ACK");
                 }
 
@@ -514,7 +518,7 @@ int main(int argc, char** argv){
                     //Leggo il numero del mittente riciclando util_port
                     sscanf(socket_buffer, "%s %d %c", mess_type_buffer, &util_port, &r_type);
                     //Invio tutte le entries mancanti
-                    send_missing_entries(util_port, r_type);
+                    send_missing_entries(util_port, r_type, "EP2P_REP", "2REP_ACK");
 
                     //Inoltro richiesta o invio alt
                     if(neighbor[0] == util_port){
@@ -526,6 +530,15 @@ int main(int argc, char** argv){
                         send_UDP(listener_socket, socket_buffer, strlen(socket_buffer), neighbor[0], "2REQ_ACK");
                     }
                 }
+
+                //Nuova entry inviata al momento della chiusura
+                if(strcmp(mess_type_buffer, "EP2P_NEW") == 0){
+                    ack_UDP(listener_socket, "2NEW_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    //Inserisco entry al volo
+                    printf("Inserisco entry %s\n", socket_buffer+9);
+                    insert_entry_string(socket_buffer+9);
+                }
+            
             }
 
         }
