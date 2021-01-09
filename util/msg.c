@@ -108,10 +108,10 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
             }
             //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera') e considero arrivato correttamente l'altro
             else {
-                printf("Qui?\n");
                 received = 1;
                 printf("[A] Arrivato un messaggio %s inatteso da %d dopo l'invio di %s a %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, send_port);
                 if(strcmp(recv_buffer, "FLAG_SET") == 0){ 
+                printf("Qui?\n");
                     sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, util_len);
                     printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
                     flag = 1;
