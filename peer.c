@@ -47,6 +47,7 @@ char socket_buffer[SOCK_MAX_LEN];
 
 //Identifica il server
 int server_port;
+int time_port;
 
 int neighbor[2];   //Da usare per salvarci i vicini
 
@@ -77,6 +78,7 @@ int main(int argc, char** argv){
 
     //Identifica un peer non connesso
     server_port = -1;
+    time_port = -1;
 
     //Stampa elenco comandi
     comandi_client();
@@ -150,30 +152,31 @@ int main(int argc, char** argv){
                 //Invio richiesta di connessione e attendo ACK
                 send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN, server_port, "CONN_ACK");
 
-                recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "NBR_LIST", "LIST_ACK");
+                //Ricevo porta del time server
+                recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "TMR_PORT", "TPRT_ACK");
+                sscanf(recv_buffer, "%s %d", temp_buffer, &time_port);
 
+                //Ricevo lista di vicini
+                recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "NBR_LIST", "LIST_ACK");
                 ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
-                        
-                //Se ho ricevuto effettivamente la lista
-                if(strcmp("NBR_LIST", temp_buffer) == 0){
-                    //Controllo quanti vicini ho
-                    switch(ret){
-                        case 1:
-                            printf("Lista vuota, nessun vicino\n");
-                            break;
-                        case 2:
-                            printf("Un vicino con porta %d\n", temp_n[0]);
-                            neighbor[0] = temp_n[0];
-                            break;
-                        case 3:
-                            printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
-                            neighbor[0] = temp_n[0];
-                            neighbor[1] = temp_n[1];
-                            break;
-                        default:
-                            printf("Problema nella trasmissione della lista\n");
-                    }
+
+                switch(ret){
+                    case 1:
+                        printf("Lista vuota, nessun vicino\n");
+                        break;
+                    case 2:
+                        printf("Un vicino con porta %d\n", temp_n[0]);
+                        neighbor[0] = temp_n[0];
+                        break;
+                    case 3:
+                        printf("Due vicini con porta %d e %d\n", temp_n[0], temp_n[1]);
+                        neighbor[0] = temp_n[0];
+                        neighbor[1] = temp_n[1];
+                        break;
+                    default:
+                        printf("Problema nella trasmissione della lista\n");
                 }
+                
             }
 
             /*
@@ -547,13 +550,30 @@ int main(int argc, char** argv){
             
             }
 
-            else {
-                printf("Ricevuto messaggio %s da un processo ignoto %d\n", socket_buffer, util_port);
+            else if(util_port == time_port){
+                printf("Ricevuto messaggio %s dal time server %d\n", socket_buffer, util_port);
+                //Blocco stdin
                 if(strcmp(mess_type_buffer, "FLAG_SET") == 0){
                     ack_UDP(listener_socket, "FSET_ACK", util_port, socket_buffer, strlen(socket_buffer));
-                    printf("Ricevuto contatto dal time server %d\n", util_port);
-                    flag = (flag+1)%2;
+                    printf("Bloccati input da stdin\n");
+                    flag = 1;
                 }
+                
+                //Invio entries al time server
+                if(strcmp(mess_type_buffer, "FLAG_REQ") == 0){
+                    ack_UDP(listener_socket, "FREQ_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    printf("Ho ricevuto richiesta dal time server\n");
+                    //Sfrutto socket buffer per inviare i prossimi messaggi
+                    ret = sprintf(socket_buffer, "%s %d", "FLAG_NUM", count_entries('a'));
+                    socket_buffer[ret] = '\0';
+                    send_UDP(listener_socket, socket_buffer, ret, time_port, "FNUM_ACK");
+                    //Invio tutte le entrate
+                    send_missing_entries(time_port, 'a', "FLAG_ENT", "FENT_ACK");
+
+                    printf("Entries inviate al time server correttamente\n");
+
+                }
+
             }
 
             FD_CLR(listener_socket, &readset);

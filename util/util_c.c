@@ -161,7 +161,7 @@ void insert_entry_string(char* entry){
     printf("Entry inserita!\n");
 }
 
-//Conta il numero di entries presente nel proprio database
+//Conta il numero di entries presente nel proprio database di un certo tipo ('a': le conta tutte)
 int count_entries(char type){
     FILE *fd;
     char filename[MAX_FILENAME_LEN];
@@ -184,7 +184,7 @@ int count_entries(char type){
         return 0;
     else {
         while(fscanf(fd, "%s %c %d %s\n", u_date, &entry_type, &num, tot_peers) == 4)
-            tot += (type == entry_type);
+            tot += (type == entry_type || type == 'a');
     }
     fclose(fd);
     return tot;

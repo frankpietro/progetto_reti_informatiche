@@ -4,8 +4,9 @@ select per monitorare arrivo informazioni
 se informazioni dal socket {
     ricevo e leggo pacchetto UDP
     se richiesta di connessione {
-        aggiungo il peer alla lista di peer connessi
         invio ack
+        aggiungo il peer alla lista di peer connessi
+        invio numero di porta del time server
         se primo peer {
             gli invio una lista vuota
         }
@@ -34,21 +35,42 @@ se informazioni dal socket {
             }
         }
     }
+    se richiesta numero entries {
+        invio ack
+        cerco il numero da inviare
+        invio risposta con il numero
+    }
+    se richiesta se risorsa di get occupata {
+        invio ack
+        invio numero di peer che sta eseguendo la get oppure 0
+    }
     se richiesta di lock per get mutuamente esclusiva {
         invio ack
         invio messaggio con autorizzazione o meno ad acquisire mutex
-        se nessun peer sta eseguendo qualcosa in mutua esclusione {
+        se nessun peer sta eseguendo qualcosa in mutua esclusione
             memorizzo il numero del peer che sta eseguendo la get
-        }
     }
     se richiesta di unlock per get mutuamente esclusiva {
         invio ack
         cancello il numero del peer che stava eseguendo la get
     }
-    se richiesta numero entries {
+    se richiesta se risorsa di stop occupata {
         invio ack
-        cerco il numero da inviare
-        invio risposta con il numero
+        invio numero di peer che sta eseguendo la stop oppure 0
+    }
+    se richiesta di lock per stop mutuamente esclusiva {
+        invio ack
+        invio messaggio con autorizzazione o meno ad acquisire mutex
+        se nessun peer sta eseguendo qualcosa in mutua esclusione
+            memorizzo il numero del peer che sta eseguendo la stop
+    }
+    se richiesta di unlock per stop mutuamente esclusiva {
+        invio ack
+        cancello il numero del peer che stava eseguendo la stop
+    }
+    se saluto del timer {
+        invio ack
+        salvo il numero di porta
     }
 }
 

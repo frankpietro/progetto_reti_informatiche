@@ -44,6 +44,8 @@ int fdmax;
 //Mutua esclusione per la get [0] e per la stop [1]
 int mutex_peer[2];
 
+int time_port;
+
 
 int main(int argc, char** argv){
     mutex_peer[0] = 0;
@@ -106,6 +108,11 @@ int main(int argc, char** argv){
                         continue;
                     }
                 }
+
+                //Invio numero di porta sfruttando list buffer
+                n = sprintf(list_buffer, "%s %d", "TMR_PORT", time_port);
+                list_buffer[n] = '\0';
+                send_UDP(server_socket, list_buffer, n, peer_port, "TPRT_ACK");
 
                 //Preparazione lista
                 get_neighbors(peer_port, connected_peers+1, &temp_port[0], &temp_port[1]);
@@ -201,6 +208,21 @@ int main(int argc, char** argv){
                 sscanf(socket_buffer, "%s %c", recv_buffer, &type);
                 
                 add_entry(type);
+            }
+
+            //Richiesta del numero totale di entries
+            if(strcmp(recv_buffer, "ENTR_REQ") == 0){
+                char type;
+                char entr_repl[MAX_ENTRY_REP];
+                int ret;
+                
+                ack_UDP(server_socket, "EREQ_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                sscanf(socket_buffer, "%s %c", recv_buffer, &type);
+
+                ret = sprintf(entr_repl, "%s %d", "ENTR_REP", read_entries(type));
+                entr_repl[ret] = '\0';
+
+                send_UDP(server_socket, entr_repl, ret, peer_port, "EREP_ACK");
             }
 
             //Controllo di blocco (se qualcuno sta eseguendo una get, nessuna operazione concessa)
@@ -307,19 +329,13 @@ int main(int argc, char** argv){
                 mutex_peer[1] = 0;
             }
 
-            //Richiesta del numero totale di entries
-            if(strcmp(recv_buffer, "ENTR_REQ") == 0){
-                char type;
-                char entr_repl[MAX_ENTRY_REP];
-                int ret;
+            //Saluto del timer
+            if(strcmp(recv_buffer, "TM_HELLO") == 0){
+                //Invio ack
+                ack_UDP(server_socket, "TMHL_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 
-                ack_UDP(server_socket, "EREQ_ACK", peer_port, socket_buffer, strlen(socket_buffer));
-                sscanf(socket_buffer, "%s %c", recv_buffer, &type);
-
-                ret = sprintf(entr_repl, "%s %d", "ENTR_REP", read_entries(type));
-                entr_repl[ret] = '\0';
-
-                send_UDP(server_socket, entr_repl, ret, peer_port, "EREP_ACK");
+                //Salvo il numero di porta del timer
+                time_port = peer_port;
             }
 
             FD_CLR(server_socket, &readset);

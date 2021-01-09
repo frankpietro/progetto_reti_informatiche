@@ -84,10 +84,12 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
             ret = sendto(socket, buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&send_addr, send_addr_len);
         } while(ret<0);
 
-        //Attesa di mezzo secondo
+        printf("Messaggio di ACK inviato\n");
+
+        //Attesa
         util_tv.tv_sec = 0;
         util_tv.tv_usec = USEC;
-        //Mi metto per un secondo solo in ascolto sul socket
+        //Mi metto per un tempo prefissato in ascolto sul socket
         //Solo in ascolto di un'eventuale copia del messaggio
         FD_ZERO(&readset);
         FD_SET(socket, &readset);
@@ -99,13 +101,14 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
             //Leggo cosa ho ricevuto
             ret = recvfrom(socket, recv_buffer, MAX_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
             //Se ho ricevuto lo stesso identico messaggio
-            if(util_addr.sin_port == send_port && util_addr.sin_addr.s_addr == send_addr.sin_addr.s_addr && (strncmp(recv_buffer, unacked, unacked_len)==0)){
+            if(util_addr.sin_port == send_port && util_addr.sin_addr.s_addr == send_addr.sin_addr.s_addr && (strncmp(recv_buffer, buffer, unacked_len)==0)){
                 //Riinvio l'ack tornando a inizio while(!received)
                 received = 0;
                 break;
             }
             //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera') e considero arrivato correttamente l'altro
             else {
+                printf("Qui?\n");
                 received = 1;
                 printf("[A] Arrivato un messaggio %s inatteso da %d dopo l'invio di %s a %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, send_port);
                 if(strcmp(recv_buffer, "FLAG_SET") == 0){ 

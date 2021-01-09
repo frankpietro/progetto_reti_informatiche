@@ -60,6 +60,18 @@ se informazioni dal socket {
             la inserisco nel file
         }
     }
+    se da time server {
+        se FLAG_SET {
+            invio ack
+            salvo il numero di porta del time server
+            alzo il flag
+        }
+        se richiesta di entries {
+            invio ack
+            invio numero di entries nel mio file
+            le invio tutte al time server
+        }
+    }
 }
 
 se informazioni da stdin {
@@ -72,8 +84,8 @@ se informazioni da stdin {
             controllo che il peer non sia gia' connesso
             controllo mutua esclusione di stop e get
             invio richiesta di connessione al server
-            ricevo la lista
-            invio ack
+            ricevo porta del time server
+            ricevo lista di vicini
             aggiungo i vicini
 
         }
