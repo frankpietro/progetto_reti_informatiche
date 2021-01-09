@@ -41,11 +41,13 @@ fd_set master;
 fd_set readset;
 int fdmax;
 
-//Mutua esclusione per la get
-int flag_peer;
+//Mutua esclusione per la get [0] e per la stop [1]
+int mutex_peer[2];
+
 
 int main(int argc, char** argv){
-    flag_peer = 0;
+    mutex_peer[0] = 0;
+    mutex_peer[1] = 0;
     //Pulizia set
     FD_ZERO(&master);
     FD_ZERO(&readset);
@@ -201,55 +203,107 @@ int main(int argc, char** argv){
             }
 
             //Controllo di blocco (se qualcuno sta eseguendo una get, nessuna operazione concessa)
-            if(strcmp(recv_buffer, "ISLOCKED") == 0){
-                
+            if(strcmp(recv_buffer, "IS_G_LCK") == 0){
+
                 char mutex_buffer[MAX_LOCK_LEN];
                 int len;
                 //Invio ack
-                ack_UDP(server_socket, "ISLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                ack_UDP(server_socket, "ISGL_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 
                 //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
-                if(flag_peer)
-                    printf("Peer %d sta eseguendo la get\n", flag_peer);
+                if(mutex_peer[0])
+                    printf("Peer %d sta eseguendo la get\n", mutex_peer[0]);
                 
-                len = sprintf(mutex_buffer, "%s %d", "FLAG_MTX", flag_peer);
+                len = sprintf(mutex_buffer, "%s %d", "GET_MUTX", mutex_peer[0]);
                 mutex_buffer[len] = '\0';
 
-                send_UDP(server_socket, mutex_buffer, len, peer_port, "FMTX_ACK");
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "GMTX_ACK");
             }
 
             //Richiesta di blocco (mutua esclusione per la get)
-            if(strcmp(recv_buffer, "LOCK_GET") == 0){
+            if(strcmp(recv_buffer, "GET_LOCK") == 0){
                 char mutex_buffer[MAX_LOCK_LEN];
                 int len;
                 //Invio ack
-                ack_UDP(server_socket, "LOCK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                ack_UDP(server_socket, "GLCK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 
                 //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
-                if(flag_peer)
-                    printf("Operazione gia' richiesta dal peer %d\n", flag_peer);
+                if(mutex_peer[0])
+                    printf("Operazione gia' richiesta dal peer %d\n", mutex_peer[0]);
                 
-                len = sprintf(mutex_buffer, "%s %d", "FLAG_MTX", flag_peer);
+                len = sprintf(mutex_buffer, "%s %d", "GET_MUTX", mutex_peer[0]);
                 mutex_buffer[len] = '\0';
 
-                send_UDP(server_socket, mutex_buffer, len, peer_port, "FMTX_ACK");
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "GMTX_ACK");
                 
-                if(!flag_peer)
-                    flag_peer = peer_port;
+                if(!mutex_peer[0])
+                    mutex_peer[0] = peer_port;
             }
 
             //Richiesta di sblocco (mutua esclusione per la get)
-            if(strcmp(recv_buffer, "UNLK_GET") == 0){
+            if(strcmp(recv_buffer, "GET_UNLK") == 0){
                 //Invio ack
-                ack_UDP(server_socket, "UNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                ack_UDP(server_socket, "GNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
                 
                 //Questa parte non dovrebbe essere mai eseguita
-                if(!flag_peer){
+                if(!mutex_peer[0]){
                     printf("Errore, apparentemente nessuno sta lavorando in mutua esclusione\n");
                     continue;
                 }
 
-                flag_peer = 0;
+                mutex_peer[0] = 0;
+            }
+
+            //Controllo di blocco (se qualcuno sta eseguendo una stop, nessuna operazione concessa)
+            if(strcmp(recv_buffer, "IS_S_LCK") == 0){
+
+                char mutex_buffer[MAX_LOCK_LEN];
+                int len;
+                //Invio ack
+                ack_UDP(server_socket, "ISSL_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
+                if(mutex_peer[1])
+                    printf("Peer %d sta eseguendo la get\n", mutex_peer[1]);
+                
+                len = sprintf(mutex_buffer, "%s %d", "STP_MUTX", mutex_peer[1]);
+                mutex_buffer[len] = '\0';
+
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "SMTX_ACK");
+            }
+
+            //Richiesta di blocco (mutua esclusione per la stop)
+            if(strcmp(recv_buffer, "STP_LOCK") == 0){
+                char mutex_buffer[MAX_LOCK_LEN];
+                int len;
+                //Invio ack
+                ack_UDP(server_socket, "SLCK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
+                if(mutex_peer[1])
+                    printf("Operazione gia' richiesta dal peer %d\n", mutex_peer[1]);
+                
+                len = sprintf(mutex_buffer, "%s %d", "STP_MUTX", mutex_peer[1]);
+                mutex_buffer[len] = '\0';
+
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "SMTX_ACK");
+                
+                if(!mutex_peer[1])
+                    mutex_peer[1] = peer_port;
+            }
+
+            //Richiesta di sblocco (mutua esclusione per la stop)
+            if(strcmp(recv_buffer, "STP_UNLK") == 0){
+                //Invio ack
+                ack_UDP(server_socket, "SNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Questa parte non dovrebbe essere mai eseguita
+                if(!mutex_peer[1]){
+                    printf("Errore, apparentemente nessuno sta lavorando in mutua esclusione\n");
+                    continue;
+                }
+
+                mutex_peer[1] = 0;
             }
 
             //Richiesta del numero totale di entries

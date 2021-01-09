@@ -140,8 +140,10 @@ int main(int argc, char** argv){
 
                 server_port %= 65536;
                 
-                if(check_lock(server_port)){
+                //Start: non puo' essere eseguita se in corso una get o una stop
+                if(check_g_lock() || check_s_lock()){
                     printf("Comando %s non eseguibile adesso, riprova piu' tardi\n", command);
+                    server_port = -1;
                     continue;
                 }
 
@@ -195,7 +197,7 @@ int main(int argc, char** argv){
                 }
 
                 //Controllo che nessuno stia eseguendo una get
-                if(check_lock(server_port)){
+                if(check_g_lock()){
                     printf("Comando %s non eseguibile, riprova piu' tardi\n", command);
                     continue;
                 }
@@ -247,7 +249,7 @@ int main(int argc, char** argv){
                 printf("Controlli superati!\n");
 
                 //Se c'e' qualche altro peer che sta eseguendo la get, mi fermo
-                if(get_lock(server_port)){
+                if(get_lock()){
                     printf("Comando get non eseguibile in questo momento, riprova piu' tardi\n");
                     continue;
                 }
@@ -328,8 +330,7 @@ int main(int argc, char** argv){
                 }
 
                 //Rilascio risorsa per la get
-                send_UDP(listener_socket, "UNLK_GET", MESS_TYPE_LEN, server_port, "UNLK_ACK");
-                flag = 0;
+                send_UDP(listener_socket, "GET_UNLK", MESS_TYPE_LEN, server_port, "GNLK_ACK");
 
             }
             
@@ -339,14 +340,16 @@ int main(int argc, char** argv){
             else if(strcmp(command,"stop")==0){
                 printf("Hai digitato comando di stop\n");
                 //Controllo che nessuno stia eseguendo una get
-                if(check_lock(server_port)){
+                if(check_g_lock()){
                     printf("Comando %s non eseguibile, riprova piu' tardi\n", command);
                     continue;
                 }
-/*
-                if(check_stop(server_port)){
+
+                if(stop_lock()){
                     printf("Un vicino sta uscendo dalla rete, attendi\n");
-                }*/
+                    continue;
+                }
+
 
                 //Controllo che la connessione esista
                 if(server_port == -1)
@@ -358,6 +361,9 @@ int main(int argc, char** argv){
                         
                     send_UDP(listener_socket, "CLT_EXIT", MESS_TYPE_LEN, server_port, "C_XT_ACK");
                 }
+
+                //Rilascio risorsa per la stop
+                send_UDP(listener_socket, "STP_UNLK", MESS_TYPE_LEN, server_port, "SNLK_ACK");
 
                 close(listener_socket);
                 _exit(0);

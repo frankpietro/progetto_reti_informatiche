@@ -69,6 +69,8 @@ se informazioni da stdin {
         se help
             stampo i comandi
         se start {
+            controllo che il peer non sia gia' connesso
+            controllo mutua esclusione di stop e get
             invio richiesta di connessione al server
             ricevo la lista
             invio ack
@@ -121,10 +123,12 @@ se informazioni da stdin {
         }
         se stop {
             controllo che nessuno stia eseguendo una get
+            acquisisco mutua esclusione su stop
             controllo che il peer sia connesso
             per ogni vicino
                 invio le entries che gli mancano
             invio messaggio di uscita
+            rilascio mutua esclusione su stop
             chiudo il socket
             esco
         }

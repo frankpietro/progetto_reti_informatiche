@@ -28,6 +28,7 @@ extern char current_d[DATE_LEN+1];
 extern char current_t[TIME_LEN+1];
 extern int neighbor[2];
 extern int listener_socket;
+extern int server_port;
 
 //Elenco dei comandi disponibili lato client
 void comandi_client(){
@@ -345,7 +346,6 @@ void send_missing_entries(int req_port, char type, char* header, char* ack){
     printf("Fine delle entries da inviare\n");
 }
 
-
 //Invia tutte le entries che mancano al peer richiedente e che sono nel suo database
 void send_double_missing_entries(){
     FILE *fd;
@@ -420,32 +420,61 @@ void send_double_missing_entries(){
 }
 
 //Controlla che nessuno stia eseguendo la get
-int check_lock(int server_port){
+int check_g_lock(){
     char lock_buffer[MAX_LOCK_LEN];
     char command[MESS_TYPE_LEN];
     int flag;
 
     //Invio richiesta al server
-    send_UDP(listener_socket, "ISLOCKED", MESS_TYPE_LEN, server_port, "ISLK_ACK");
+    send_UDP(listener_socket, "IS_G_LCK", MESS_TYPE_LEN, server_port, "ISGL_ACK");
     //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
-    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "GET_MUTX", "GMTX_ACK");
     sscanf(lock_buffer, "%s %d", command, &flag);
     //Lo ritorno
     return flag;
 }
 
 //Controlla che nessuno stia eseguendo la get da una get --> acquisisce mutua esclusione
-int get_lock(int server_port){
+int get_lock(){
     char lock_buffer[MAX_LOCK_LEN];
     char command[MESS_TYPE_LEN];
     int flag;
 
     //Invio richiesta al server
-    send_UDP(listener_socket, "LOCK_GET", MESS_TYPE_LEN, server_port, "LOCK_ACK");
+    send_UDP(listener_socket, "GET_LOCK", MESS_TYPE_LEN, server_port, "GLCK_ACK");
     //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
-    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "FLAG_MTX", "FMTX_ACK");
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "GET_MUTX", "GMTX_ACK");
     sscanf(lock_buffer, "%s %d", command, &flag);
     //Lo ritorno
     return flag;
 }
 
+//Controlla che nessuno stia eseguendo la stop
+int check_s_lock(){
+    char lock_buffer[MAX_LOCK_LEN];
+    char command[MESS_TYPE_LEN];
+    int flag;
+
+    //Invio richiesta al server
+    send_UDP(listener_socket, "IS_S_LCK", MESS_TYPE_LEN, server_port, "ISSL_ACK");
+    //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "STP_MUTX", "SMTX_ACK");
+    sscanf(lock_buffer, "%s %d", command, &flag);
+    //Lo ritorno
+    return flag;
+}
+
+//Prova ad acquisire mutua esclusione sulla stop
+int stop_lock(){
+    char lock_buffer[MAX_LOCK_LEN];
+    char command[MESS_TYPE_LEN];
+    int flag;
+
+    //Invio richiesta al server
+    send_UDP(listener_socket, "STP_LOCK", MESS_TYPE_LEN, server_port, "SLCK_ACK");
+    //Aspetto risposta con numero di flag che sta tenendo la risorsa oppure 0
+    recv_UDP(listener_socket, lock_buffer, MAX_LOCK_LEN, server_port, "STP_MUTX", "SMTX_ACK");
+    sscanf(lock_buffer, "%s %d", command, &flag);
+    //Lo ritorno
+    return flag;
+}
