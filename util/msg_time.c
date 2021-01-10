@@ -13,10 +13,11 @@
 #define MAX_RECV 40
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 #define USEC 30000
+#define TIME_LEN 8
+#define MAX_CONNECTED_PEERS 100
+#define MAX_ENTRY_UPDATE 630
 
 #define LOCALHOST "127.0.0.1"
-
-int flag;
 
 void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     memset(addr_p, 0, sizeof((*addr_p)));
@@ -105,16 +106,9 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
                 break;
             }
             //Se ho ricevuto un messaggio diverso lo scarto (il peer lo rimandera') e considero arrivato correttamente l'altro
-            else {
+            else 
                 received = 1;
-                printf("[A] Arrivato un messaggio %s inatteso da %d dopo l'invio di %s a %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), unacked, send_port);
             
-                if(strcmp(recv_buffer, "FLAG_SET") == 0){
-                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, util_len);
-                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
-                    flag = 1;
-                }
-            }
 
             FD_CLR(socket, &readset);
         }
@@ -123,7 +117,7 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
             received = 1;
     }
 
-    printf("ACK %s inviato correttamente al destinatario %d\n", buffer, send_port);
+    printf("ACK ricevuto correttamente\n");
 }
 
 /*
@@ -180,19 +174,12 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
             //Ignoro qualunque altro messaggio
             else {
                 printf("[S] Arrivato un messaggio %s inatteso da %d mentre attendevo %s da %d, scartato\n", recv_buffer, ntohs(util_addr.sin_port), acked, recv_port);
-                if(strcmp(recv_buffer, "FLAG_SET") == 0){ 
-                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&util_addr, util_len);
-                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
-                    flag = 1;
-                }
             }
             
             FD_CLR(socket, &readset);
 
         }
     }
-
-    printf("Messaggio %s inviato correttamente al destinatario %d\n", buffer, recv_port);
 }
 
 /*
@@ -246,12 +233,7 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
                     printf("chiunque, scartato\n");
                 else
                     printf("%d, scartato\n", send_port);
-
-                if(strcmp(temp_buffer, "FLAG_SET") == 0){ 
-                    sendto(socket, "FSET_ACK", MESS_TYPE_LEN+1, 0, (struct sockaddr*)&send_addr, send_addr_len);
-                    printf("Arrivato messaggio di flag dal timer, imposto comunque il flag\n");
-                    flag = 1;
-                }
+                
             }
 
             FD_CLR(socket, &readset);
@@ -259,4 +241,41 @@ void recv_UDP(int socket, char* buffer, int buff_l, int send_port, char* correct
     }
 
     ack_UDP(socket, ack_type, ntohs(send_addr.sin_port), buffer, strlen(buffer));
+}
+
+//Inserisce tutte le entries nel file temporaneo
+void insert_temp(char* entry){
+    FILE *fd1, *fd2;
+    char u_time[TIME_LEN];
+    char entry_type;
+    int num;
+    char tot_peers[MAX_CONNECTED_PEERS*6];
+    char entry_in[MAX_ENTRY_UPDATE];
+    
+    fd1 = fopen("entries.txt", "r");
+    //Se e' la prima la inserisco
+    if(fd1 == NULL){
+        printf("Prima entry\n");
+        fd2 = fopen("entries.txt", "w");
+        fprintf(fd2, "%s\n", entry);
+        fclose(fd2);
+        return;
+    }
+    //Devo controllare che non sia gia' dentro
+    fd2 = fopen("temp.txt", "w");
+    while(fscanf(fd1, "%s %c %d %s\n", u_time, &entry_type, &num, tot_peers) != EOF){
+        sprintf(entry_in, "%s %c %d %s", u_time, entry_type, num, tot_peers);
+        fprintf(fd2, "%s\n", entry_in);
+        if(strcmp(entry_in, entry) == 0){
+            printf("Entry gia' presente\n");
+            return;
+        }
+    }
+    //Se sono arrivato qui l'entry non era presente
+    printf("Nuova entry da inserire\n");
+    fprintf(fd2, "%s\n", entry);
+    fclose(fd1);
+    fclose(fd2);
+    remove("entries.txt");
+    rename("temp.txt", "entries.txt");
 }

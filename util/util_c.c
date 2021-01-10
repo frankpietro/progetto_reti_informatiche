@@ -167,7 +167,7 @@ int count_entries(char type){
     char filename[MAX_FILENAME_LEN];
     int tot;
     char entry_type;
-    char u_date[DATE_LEN];
+    char u_time[TIME_LEN];
     int num;
     char tot_peers[6*MAX_CONNECTED_PEERS];
 
@@ -183,7 +183,7 @@ int count_entries(char type){
     if(fd == NULL)
         return 0;
     else {
-        while(fscanf(fd, "%s %c %d %s\n", u_date, &entry_type, &num, tot_peers) == 4)
+        while(fscanf(fd, "%s %c %d %s\n", u_time, &entry_type, &num, tot_peers) == 4)
             tot += (type == entry_type || type == 'a');
     }
     fclose(fd);
@@ -196,7 +196,7 @@ int sum_entries(char type){
     char filename[MAX_FILENAME_LEN];
     int tot;
     char entry_type;
-    char u_date[DATE_LEN];
+    char u_time[TIME_LEN];
     int num;
     char tot_peers[6*MAX_CONNECTED_PEERS];
 
@@ -212,7 +212,7 @@ int sum_entries(char type){
     if(fd == NULL)
         return 0;
     else {
-        while(fscanf(fd, "%s %c %d %s\n", u_date, &entry_type, &num, tot_peers) == 4)
+        while(fscanf(fd, "%s %c %d %s\n", u_time, &entry_type, &num, tot_peers) == 4)
             if(entry_type == type)
                 tot += num;
     }
@@ -303,7 +303,7 @@ void wait_for_entries(int peer_entr, int tot_entr, char type){
 
 //Invia tutte le entries che mancano al peer richiedente e che sono nel suo database
 void send_missing_entries(int req_port, char type, char* header, char* ack){
-    FILE *fd;
+    FILE *fd, *temp;
     char filename[MAX_FILENAME_LEN];
     char e_time[TIME_LEN];
     char e_type;
@@ -327,6 +327,8 @@ void send_missing_entries(int req_port, char type, char* header, char* ack){
         printf("Nessuna entry\n");
         return;
     }
+    //Quando trovo un'entry devo aggiornarla e riscriverla
+    temp = fopen("./peer_dir/temp.txt", "w");
     //Scorro tutte le entries
     while(fscanf(fd, "%s %c %d %s", e_time, &e_type, &e_quantity, e_peers) != EOF){
         //Se ne trovo una del tipo richiesto e non posseduta dal richiedente
@@ -339,9 +341,18 @@ void send_missing_entries(int req_port, char type, char* header, char* ack){
             whole_entry[ret] = '\0';
             send_UDP(listener_socket, whole_entry, ret, req_port, ack);
         }
+        //Se quell'entry e' gia' presente la copio e basta
+        else {
+            ret = sprintf(whole_entry, "%s %s %c %d %s", header, e_time, e_type, e_quantity, e_peers);
+            whole_entry[ret] = '\0';
+        }
+        fprintf(temp, "%s\n", whole_entry+9);
     }
 
     fclose(fd);
+    fclose(temp);
+    remove(filename);
+    rename("./peer_dir/temp.txt", filename);
     
     printf("Fine delle entries da inviare\n");
 }

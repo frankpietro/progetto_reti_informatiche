@@ -173,11 +173,7 @@ int main(int argc, char** argv){
                 
                 printf("Elimino il peer dalla rete. Aggiorno la lista di vicini di %d e %d\n", temp_nbr_port[0], temp_nbr_port[1]);
 
-                print_peers(connected_peers);
-
                 remove_peer(peer_port);
-                
-                print_peers(connected_peers-1);
 
                 if(temp_nbr_port[0] == -1){
                     printf("Eliminato l'ultimo peer connesso\n");
