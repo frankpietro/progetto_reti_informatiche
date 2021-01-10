@@ -1,44 +1,47 @@
 Da peer a server
-CONN_REQ CONN_ACK
-NEW_ENTR ENEW_ACK
-ENTR_REQ EREQ_ACK
-CLT_EXIT C_XT_ACK
-GET_LOCK GLCK_ACK
-GET_UNLK GNLK_ACK
-IS_G_LCK ISGL_ACK
-STP_LOCK SLCK_ACK
-STP_UNLK SNLK_ACK
-IS_S_LCK ISSL_ACK
+CONN_REQ CONN_ACK   Richiesta di connessione
+NEW_ENTR ENEW_ACK   Nuovo dato giornaliero aggiunto con add
+ENTR_REQ EREQ_ACK   Richiesta del numero di entries giornaliere
+CLT_EXIT C_XT_ACK   Uscita del peer
+GET_LOCK GLCK_ACK   Richiesta della risorsa di mutex per la get
+GET_UNLK GNLK_ACK   Rilascio della risorsa di mutex per la get
+IS_G_LCK ISGL_ACK   Lettura della risorsa di mutex per la get
+STP_LOCK SLCK_ACK   Richiesta della risorsa di mutex per la stop
+STP_UNLK SNLK_ACK   Rilascio della risorsa di mutex per la stop
+IS_S_LCK ISSL_ACK   Lettura della risorsa di mutex per la stop
 
 Da server a peer
-NBR_LIST LIST_ACK
-TMR_PORT TPRT_ACK
-NBR_UPDT UPDT_ACK
-SRV_EXIT S_XT_ACK
-ENTR_REP EREP_ACK
-GET_MUTX GMTX_ACK
-STP_MUTX SMTX_ACK
+NBR_LIST LIST_ACK   Invio lista di vicini a un peer appena entrato
+TMR_PORT TPRT_ACK   Invio numero di porta del time server
+NBR_UPDT UPDT_ACK   Aggiornamento della lista di prossimita'
+SRV_EXIT S_XT_ACK   Uscita del server
+ENTR_REP EREP_ACK   Numero di entries giornaliere necessario per avere dati aggiornati
+GET_MUTX GMTX_ACK   Concessione risorsa di mutex per la get
+STP_MUTX SMTX_ACK   Concessione risorsa di mutex per la stop
 
 Da timer a server
-TM_HELLO TMHL_ACK
+TM_HELLO TMHL_ACK   Hello del time server per consentire al ds la registrazione del numero di porta
+
+Da server a timer
+SRV_EXIT S_XT_ACK   Uscita del discovery server
 
 Da timer a peer
-FLAG_SET FSET_ACK
-FLAG_REQ FREQ_ACK
-FLAG_TOT FTOT_ACK
-FLAG_RST FRST_ACK
-AGGR_CNT ACNT_ACK
-AGGR_ENT AENT_ACK
+FLAG_SET FSET_ACK   Blocco stdin
+FLAG_REQ FREQ_ACK   Richiesta di tutte le entries giornaliere
+FLAG_TOT FTOT_ACK   Invio dei dati aggregati giornalieri
+FLAG_RST FRST_ACK   Sblocco stdin
+AGGR_CNT ACNT_ACK   Numero di entries dallo storico degli aggregati che stanno per essere inviate
+AGGR_ENT AENT_ACK   Entry dallo storico degli aggregati
 
 Da peer a timer
-FLAG_NUM FNUM_ACK
-FLAG_ENT FENT_ACK
-AGGR_GET AGET_ACK
+FLAG_NUM FNUM_ACK   Numero di entries giornaliere che stanno per essere inviate
+FLAG_ENT FENT_ACK   Entry giornaliera
+AGGR_GET AGET_ACK   Richiesta di dati dallo storico degli aggregati
 
 Tra peer
-AGGR_REQ AREQ_ACK
-AGGR_REP AREP_ACK
-EP2P_REQ 2REQ_ACK
-EP2P_REP 2REP_ACK
-EP2P_HLT 2HLT_ACK
-EP2P_NEW 2NEW_ACK
+AGGR_REQ AREQ_ACK   Richiesta di dati aggregati giornalieri
+AGGR_REP AREP_ACK   Dato aggregato giornaliero
+EP2P_REQ 2REQ_ACK   Richiesta di entries mancanti a un certo peer
+EP2P_REP 2REP_ACK   Entry mancante al peer a cui il messaggio e' destinato
+EP2P_HLT 2HLT_ACK   Fine del query flooding
+EP2P_NEW 2NEW_ACK   Entry mancante al peer inviata da un vicino che sta chiudendo

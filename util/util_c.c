@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-#include <signal.h>
-#include <sys/wait.h>
+
 #include "retr_time.h"
 #include "msg.h"
 

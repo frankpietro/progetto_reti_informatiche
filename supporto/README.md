@@ -25,7 +25,7 @@ Per ogni funzione è presente almeno un commento introduttivo che ne spiega il s
 Il file total_aggr.txt contiene dati utili per osservare il corretto funzionamento della get già subito dopo l’avviamento del server.
 
 TOPOLOGIA
-I peer sono organizzati con topologia ad anello: a ogni inserimento, il server inserisce nel punto giusto il peer richiedente e aggiorna i vicini degli eventuali peer a cui è cambiata la lista di prossimità. Un peer ha 0 vicini se è da solo, 1 se ci sono due peer collegati e 2 in ogni altro caso.
+I peer sono organizzati con topologia ad anello, ordinato per numero di porta: a ogni chiamata della start, il server inserisce nel punto giusto il peer richiedente e aggiorna i vicini degli eventuali peer a cui è cambiata la lista di prossimità. Un peer ha 0 vicini se è da solo, 1 se ci sono due peer collegati e 2 in ogni altro caso.
 
 Quando un peer richiede di uscire, le liste di prossimità vengono aggiornate in modo analogo.
 

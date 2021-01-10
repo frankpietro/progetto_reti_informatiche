@@ -12,7 +12,7 @@
 #define MESS_TYPE_LEN 8
 #define MAX_RECV 40
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
-#define USEC 30000
+#define USEC 15000
 
 #define LOCALHOST "127.0.0.1"
 
