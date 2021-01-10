@@ -13,11 +13,15 @@
 #define MAX_RECV 40
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 #define USEC 30000
+#define DATE_LEN 10
 #define TIME_LEN 8
 #define MAX_CONNECTED_PEERS 100
 #define MAX_ENTRY_UPDATE 630
-
 #define LOCALHOST "127.0.0.1"
+
+
+extern char current_d[DATE_LEN+1];
+extern char current_t[TIME_LEN+1];
 
 void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     memset(addr_p, 0, sizeof((*addr_p)));
@@ -303,4 +307,13 @@ int sum_entries(char type){
     }
     fclose(fd);
     return tot;
+}
+
+//Scrive gli aggregati giornalieri su un file
+void register_tot(int tests, int cases){
+    FILE *fd;
+    fd = fopen("total_aggr.txt", "a");
+    fprintf(fd, "%s %d %d", current_d, tests, cases);
+    fclose(fd);
+    printf("Aggregati scritti su file\n");
 }

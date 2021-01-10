@@ -1,0 +1,19 @@
+SCHEMA TIME
+
+imposta a 0 un flag
+ciclicamente {
+    se il flag e' a 1 {
+        lo abbassa
+        invia a tutti i peer il segnale di reset
+    }
+    altrimenti {
+        se l'orario e' tra le 17:50 e le 18 {
+            blocca tutti i peer
+            aspetta che finiscano eventuali operazioni in corso
+            si fa inviare le loro entries
+            le copia su un file provvisorio
+            esegue la somma per tipologia
+            invia una copia di questa somma a ogni peer
+        }
+    }
+}

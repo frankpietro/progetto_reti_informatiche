@@ -14,4 +14,5 @@ int get_lock();
 int check_s_lock();
 int stop_lock();
 void register_daily_tot(char*);
+void print_daily_aggr(char*);
 int is_flag_up();

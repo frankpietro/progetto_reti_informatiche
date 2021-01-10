@@ -577,8 +577,9 @@ int main(int argc, char** argv){
                 //Ricezione del totale
                 if(strcmp(mess_type_buffer, "FLAG_TOT") == 0){
                     ack_UDP(listener_socket, "FTOT_ACK", util_port, socket_buffer, strlen(socket_buffer));
-                    register_daily_tot(socket_buffer+9);
-                    printf("Registrati gli aggregati giornalieri\n");
+                    //register_daily_tot(socket_buffer+9);
+                    printf("Arrivati gli aggregati giornalieri\n");
+                    print_daily_aggr(socket_buffer+9);
                 }
 
                 //BSlocco stdin

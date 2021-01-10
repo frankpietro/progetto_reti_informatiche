@@ -71,6 +71,10 @@ se informazioni dal socket {
             invio numero di entries nel mio file
             le invio tutte al time server
         }
+        se arrivo aggregati giornalieri {
+            stampo a video i dati
+            elimino tutti i file del giorno
+        }
         se FLAG_RST {
             invio ack
             abbasso il flag
@@ -106,32 +110,34 @@ se informazioni da stdin {
             acquisisco mutua esclusione
             se non posso acquisirla
                 esco dalla get
-            invio richiesta numero entries del giorno al server
-            ricevo numero entries del giorno
-            se zero
-                niente da calcolare
-            altrimenti se uguale a quello posseduto {
-                calcolo il totale
-                lo scrivo su un file
-            }
-            altrimenti {
-                se ho zero vicini
-                    impossibile ottenere il dato richiesto
+            se mi servono i dati di oggi {
+                invio richiesta numero entries del giorno al server
+                ricevo numero entries del giorno
+                se zero
+                    niente da calcolare
+                altrimenti se uguale a quello posseduto {
+                    calcolo il totale
+                    lo scrivo su un file
+                }
                 altrimenti {
-                    invio richiesta dati aggregati con nome porta, tipo e numero entries attuali
-                    ricevo risposta
-                    se contiene un numero positivo
-                        lo scrivo su un file
-                    se contiene 0 {
-                        invio richiesta di nuove entrate con tipo e mia porta
-                        per ogni entrata che mi manca {
-                            ricevo il messaggio
-                            controllo che non sia corrotto
-                            aggiungo la nuova entrata alle mie
+                    se ho zero vicini
+                        impossibile ottenere il dato richiesto
+                    altrimenti {
+                        invio richiesta dati aggregati con nome porta, tipo e numero entries attuali
+                        ricevo risposta
+                        se contiene un numero positivo
+                            lo scrivo su un file
+                        se contiene 0 {
+                            invio richiesta di nuove entrate con tipo e mia porta
+                            per ogni entrata che mi manca {
+                                ricevo il messaggio
+                                controllo che non sia corrotto
+                                aggiungo la nuova entrata alle mie
+                            }
+                            ricevo messaggio di fine trasferimento entrate
+                            calcolo il totale
+                            lo scrivo su un file
                         }
-                        ricevo messaggio di fine trasferimento entrate
-                        calcolo il totale
-                        lo scrivo su un file
                     }
                 }
             }

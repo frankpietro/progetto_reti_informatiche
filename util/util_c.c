@@ -490,6 +490,7 @@ int stop_lock(){
     return flag;
 }
 
+
 //Registra i totali del giorno
 void register_daily_tot(char* aggr){
     FILE *fd;
@@ -500,8 +501,25 @@ void register_daily_tot(char* aggr){
     filename[ret] = '\0';
 
     fd = fopen(filename, "a");
-    fprintf(fd, "%s %s", current_d, aggr);
+    fprintf(fd, "%s %s\n", current_d, aggr);
     fclose(fd);
+    //File giornalieri: non servono piu'
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+    remove(filename);
+    sprintf(filename, "%s_%c_%s_%d.txt", "./peer_dir/aggr", 't', current_d, my_port);
+    remove(filename);
+    sprintf(filename, "%s_%c_%s_%d.txt", "./peer_dir/aggr", 'n', current_d, my_port);
+    remove(filename);
+}
+
+//Stampo gli aggregati giornalieri e pulisco la memoria
+void printt_daily_buffer(char* entr){
+    int tot[2];
+    char filename[MAX_FILENAME_LEN];
+
+    sprintf(entr, "%d %d", &tot[0], &tot[1]);
+    printf("Tamponi di oggi: %d;\nnuovi casi di oggi: %d\n", tot[0], tot[1]);
+
     //File giornalieri: non servono piu'
     sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
     remove(filename);
