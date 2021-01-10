@@ -489,3 +489,32 @@ int stop_lock(){
     //Lo ritorno
     return flag;
 }
+
+//Registra i totali del giorno
+void register_daily_tot(char* aggr){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    int ret;
+
+    ret = sprintf(filename, "%s_%d.txt", "./peer_dir/tot_aggr", my_port);
+    filename[ret] = '\0';
+
+    fd = fopen(filename, "a");
+    fprintf(fd, "%s %s", current_d, aggr);
+    fclose(fd);
+    //File giornalieri: non servono piu'
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+    remove(filename);
+    sprintf(filename, "%s_%c_%s_%d.txt", "./peer_dir/aggr", 't', current_d, my_port);
+    remove(filename);
+    sprintf(filename, "%s_%c_%s_%d.txt", "./peer_dir/aggr", 'n', current_d, my_port);
+    remove(filename);
+}
+
+//Controllo iniziale su flag del peer
+int is_flag_up(){
+    char *pointer;
+
+    pointer = strstr(current_t, "17:5");
+    return (pointer != NULL) ? 1 : 0;
+}

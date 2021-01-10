@@ -61,8 +61,8 @@ extern int flag;
 
 
 int main(int argc, char** argv){
-    //All'inizio comandi liberi
-    flag = 0;
+    //All'inizio controllo se e' orario di chiusura
+    flag = is_flag_up();
     //Pulizia set
     FD_ZERO(&master);
     FD_ZERO(&readset);
@@ -574,6 +574,19 @@ int main(int argc, char** argv){
 
                 }
 
+                //Ricezione del totale
+                if(strcmp(mess_type_buffer, "FLAG_TOT") == 0){
+                    ack_UDP(listener_socket, "FTOT_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    register_daily_tot(socket_buffer+9);
+                    printf("Registrati gli aggregati giornalieri\n");
+                }
+
+                //BSlocco stdin
+                if(strcmp(mess_type_buffer, "FLAG_RST") == 0){
+                    ack_UDP(listener_socket, "FRST_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    printf("Sbloccati input da stdin\n");
+                    flag = 0;
+                }
             }
 
             FD_CLR(listener_socket, &readset);

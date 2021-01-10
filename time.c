@@ -53,8 +53,17 @@ int main(int argc, char** argv){
 
     while(1){
         printf("Inizio\n");
-        if(daily_flag == 1)
+        if(daily_flag == 1){
             daily_flag = 0;
+            //Fa ripartire tutti i peer
+            i=0;
+            peer_port = get_port(i);
+            while(peer_port != -1){
+                send_UDP(time_socket, "FLAG_RST", MESS_TYPE_LEN, peer_port, "FRST_ACK");
+                peer_port = get_port(++i);
+            }
+
+        }
 
         else {
             retrieve_time();
@@ -115,7 +124,7 @@ int main(int argc, char** argv){
 
             printf("Uscito dal while\n");
         }
-        printf("Fine\n");
+        
         sleep(10);
     }
 

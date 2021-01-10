@@ -71,6 +71,10 @@ se informazioni dal socket {
             invio numero di entries nel mio file
             le invio tutte al time server
         }
+        se FLAG_RST {
+            invio ack
+            abbasso il flag
+        }
     }
 }
 

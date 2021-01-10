@@ -13,3 +13,5 @@ int check_g_lock();
 int get_lock();
 int check_s_lock();
 int stop_lock();
+void register_daily_tot(char*);
+int is_flag_up();
