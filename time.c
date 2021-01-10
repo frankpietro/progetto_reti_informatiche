@@ -15,12 +15,10 @@
 #include "./util/retr_time.h"
 //Gestione peer connessi alla rete
 #include "./util/peer_file.h"
+//Gesione dei messaggi
 #include "./util/msg.h"
-
-#define DATE_LEN 10
-#define TIME_LEN 8
-#define MESS_TYPE_LEN 8
-#define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
+//Costanti
+#include "./util/const.h"
 
 extern char current_d[DATE_LEN+1];
 extern char current_t[TIME_LEN+1];
