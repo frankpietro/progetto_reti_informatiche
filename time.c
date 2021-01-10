@@ -35,6 +35,8 @@ char* pointer;
 
 int peer_port;
 
+int tot[2];
+
 char recv_buffer[MAX_ENTRY_UPDATE];
 char header_buffer[MESS_TYPE_LEN];
 int entries;
@@ -92,8 +94,22 @@ int main(int argc, char** argv){
                 }
                 printf("Raccolte tutte le entries\n");
 
-                
+                //Calcola gli aggregati giornalieri
+                tot[0] = sum_entries('t');
+                tot[1] = sum_entries('n');
 
+                printf("Totali: %d e %d\n", tot[0], tot[1]);
+
+                i = sprintf(recv_buffer, "%s %d %d", "FLAG_TOT", tot[0], tot[1]);
+                recv_buffer[i] = '\0';
+
+                //Li invia a tutti i peer
+                i=0;
+                peer_port = get_port(i);
+                while(peer_port != -1){
+                    send_UDP(time_socket, recv_buffer, strlen(recv_buffer), peer_port, "FTOT_ACK");
+                    peer_port = get_port(++i);
+                }
 
             }
 

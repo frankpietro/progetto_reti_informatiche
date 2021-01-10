@@ -279,3 +279,28 @@ void insert_temp(char* entry){
     remove("entries.txt");
     rename("temp.txt", "entries.txt");
 }
+
+//Somma le entries
+int sum_entries(char type){
+    FILE *fd;
+    int tot;
+    char entry_type;
+    char u_time[TIME_LEN];
+    int num;
+    char tot_peers[6*MAX_CONNECTED_PEERS];
+
+    tot = 0;
+
+    //printf("Filename: %s\n", filename);
+
+    fd = fopen("entries.txt", "r");
+    if(fd == NULL)
+        return 0;
+    else {
+        while(fscanf(fd, "%s %c %d %s\n", u_time, &entry_type, &num, tot_peers) == 4)
+            if(entry_type == type)
+                tot += num;
+    }
+    fclose(fd);
+    return tot;
+}
