@@ -9,18 +9,12 @@
 #include <unistd.h>
 #include <time.h>
 
+//Gestione data e ora correnti
 #include "retr_time.h"
+//Scambio di messaggi
 #include "msg.h"
-
-#define DATE_LEN 10
-#define TIME_LEN 8
-#define MIN_YEAR 2021
-#define MAX_CONNECTED_PEERS 100
-#define MAX_FILENAME_LEN 31
-#define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
-#define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
-#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
-#define MAX_LOCK_LEN 14
+//Costanti
+#include "const.h"
 
 extern int my_port;
 extern char current_d[DATE_LEN+1];

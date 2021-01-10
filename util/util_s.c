@@ -9,13 +9,10 @@
 #include <unistd.h>
 #include <time.h>
 
+//Gestione di data e ora correnti
 #include "retr_time.h"
-
-#define LOCALHOST "127.0.0.1"
-#define DATE_LEN 10
-#define TIME_LEN 8
-#define MAX_FILENAME_LEN 31
-#define MIN_YEAR 1990
+//Costanti
+#include "const.h"
 
 extern char current_d[DATE_LEN+1];
 extern char current_t[TIME_LEN+1];

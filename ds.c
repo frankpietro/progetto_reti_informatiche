@@ -11,27 +11,20 @@
 
 //Funzioni di utilita'
 #include "./util/util_s.h"
-//Gestione del file con i peer
+//Gestione del file con i peer connessi alla rete
 #include "./util/peer_file.h"
 //Gesione dei messaggi
 #include "./util/msg.h"
-
-#define MAX_COMMAND 30
-#define MESS_TYPE_LEN 8
-#define LIST_MAX_LEN 21
-#define LOCALHOST "127.0.0.1"
-#define MAX_CONNECTED_PEERS 100
-#define SOCK_MAX_LEN 30
-#define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
-#define MAX_LOCK_LEN 14
+//Costanti
+#include "./util/const.h"
 
 //Variabili
 int server_socket;  //Socket su cui il server riceve messaggi dai peer
 struct sockaddr_in server_addr;     //Struttura per gestire il socket
 socklen_t server_len;
 
-char command_buffer[MAX_COMMAND];   //Buffer su cui salvare i comandi provenienti da stdin
-char socket_buffer[SOCK_MAX_LEN];
+char command_buffer[MAX_STDIN_S];   //Buffer su cui salvare i comandi provenienti da stdin
+char socket_buffer[MAX_SOCKET_RECV];
 char recv_buffer[MESS_TYPE_LEN+1]; //Buffer su cui ricevere messaggio di richiesta connessione
 
 extern int connected_peers;    //Numero di peers connessi alla rete
@@ -81,7 +74,7 @@ int main(int argc, char** argv){
             char peer_addr_buff[INET_ADDRSTRLEN] = LOCALHOST; //Assumo che i peer partano tutti sulla macchina locale
             
             //Ricezione richieste di connessione
-            peer_port = s_recv_UDP(server_socket, socket_buffer, SOCK_MAX_LEN);
+            peer_port = s_recv_UDP(server_socket, socket_buffer, MAX_SOCKET_RECV);
             sscanf(socket_buffer, "%s", recv_buffer);
             recv_buffer[MESS_TYPE_LEN] = '\0';
 
@@ -92,9 +85,9 @@ int main(int argc, char** argv){
             //Richiesta di connessione
             if(strcmp(recv_buffer, "CONN_REQ") == 0){
                 int temp_port[2]; //Variabili per salvare eventuali vicini
-                char list_buffer[LIST_MAX_LEN]; //Buffer per invio liste al peer                
+                char list_buffer[MAX_LIST_LEN]; //Buffer per invio liste al peer                
                 int n; //Variabile per la lunghezza del messaggio da inviare al peer             
-                char list_update_buffer[LIST_MAX_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
+                char list_update_buffer[MAX_LIST_LEN]; //Liste da inviare ai peer a cui e' cambiata la lista dei vicini
                 
                 //Ack dell'arrivo della richiesta
                 ack_UDP(server_socket, "CONN_ACK", peer_port, socket_buffer, strlen(socket_buffer));
@@ -156,7 +149,7 @@ int main(int argc, char** argv){
             if(strcmp(recv_buffer, "CLT_EXIT") == 0){
                 //Variabili per salvare informazioni temporanee
                 int temp_nbr_port[2];
-                char list_update[LIST_MAX_LEN];
+                char list_update[MAX_LIST_LEN];
                 int n;
 
                 ack_UDP(server_socket, "C_XT_ACK", peer_port, socket_buffer, strlen(socket_buffer));
@@ -343,9 +336,9 @@ int main(int argc, char** argv){
             //Parsing dell'input
             int neighbor_peer;
             int input_number;
-            char command[MAX_COMMAND];
+            char command[MAX_COMMAND_S];
             
-            fgets(command_buffer, MAX_COMMAND, stdin);
+            fgets(command_buffer, MAX_COMMAND_S, stdin);
             input_number = sscanf(command_buffer, "%s %d", command, &neighbor_peer);
             
             /*

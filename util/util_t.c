@@ -9,17 +9,10 @@
 #include <unistd.h>
 #include <time.h>
 
+//Scambio di messaggi
 #include "msg.h"
-
-#define MESS_TYPE_LEN 8
-#define MAX_RECV 40
-#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
-#define USEC 30000
-#define DATE_LEN 10
-#define TIME_LEN 8
-#define MAX_CONNECTED_PEERS 100
-#define MAX_ENTRY_UPDATE 630
-#define LOCALHOST "127.0.0.1"
+//Costanti
+#include "const.h"
 
 extern int time_socket;
 

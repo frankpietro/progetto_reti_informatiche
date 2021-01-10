@@ -9,28 +9,12 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "./util/msg.h"
+//Funzioni di utilita'
 #include "./util/util_c.h"
-
-#define MAX_IN 40   //Massima lunghezza comando da terminale
-#define ADDR_LEN 15 //Massima lunghezza stringa con indirizzo IP
-#define DATE_LEN 10 //Lunghezza di una stringa contenente la data in formato dd:mm:yyyy
-#define TIME_LEN 8
-#define DATE_UPDATE_LEN 28
-#define MESS_TYPE_LEN 8 //Lunghezza tipo messaggio UDP
-#define LIST_MAX_LEN 21 //Massima lunghezza lista di vicini
-#define SOCK_MAX_LEN 630
-#define MAX_COMMAND 6
-#define MAX_FILENAME_LEN 20
-#define MAX_CONNECTED_PEERS 100
-#define MAX_ENTRY_REP 16 //Non piu' di 1M di entries distinte
-#define ENTR_W_TYPE 10
-#define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
-#define MAX_SUM_ENTRIES 19 //Massimo totale aggregato: a 10 cifre
-#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
-#define MAX_LOCK_LEN 14
-#define MAX_PAST_AGGR 30 //heeader e due date
-#define LOCALHOST "127.0.0.1"
+//Gesione dei messaggi
+#include "./util/msg.h"
+//Costanti
+#include "./util/const.h"
 
 //Variabili
 int my_port;
@@ -42,8 +26,8 @@ struct sockaddr_in time_addr;
 socklen_t time_addr_len;
 
 int ret;    //Variabile di servizio
-char stdin_buff[MAX_IN];    //Buffer per i comandi da standard input
-char socket_buffer[SOCK_MAX_LEN];
+char stdin_buff[MAX_STDIN_C];    //Buffer per i comandi da standard input
+char socket_buffer[MAX_ENTRY_UPDATE];
 
 //Identifica il server
 int server_port;
@@ -96,9 +80,9 @@ int main(int argc, char** argv){
         //Messaggio da stdin
         if(FD_ISSET(0, &readset)){
             //Richiede comando
-            char command[MAX_COMMAND];
+            char command[MAX_COMMAND_C];
 
-            fgets(stdin_buff, MAX_IN, stdin);
+            fgets(stdin_buff, MAX_STDIN_C, stdin);
             sscanf(stdin_buff, "%s", command);
 
             //Se flag settato, non sono accettati comandi da stdin (durante una get o quando si cambiano i registri)
@@ -120,9 +104,9 @@ int main(int argc, char** argv){
             */
             else if(strcmp(command,"start")==0){
                 //Variabili da prendere da stdin
-                char DS_addr[ADDR_LEN]; //Indirizzo IP del server
+                char DS_addr[INET_ADDRSTRLEN]; //Indirizzo IP del server
                 //Gestione ricezione lista
-                char recv_buffer[LIST_MAX_LEN];
+                char recv_buffer[MAX_LIST_LEN];
                 char temp_buffer[MESS_TYPE_LEN];
                 int temp_n[2];
                 
@@ -159,11 +143,11 @@ int main(int argc, char** argv){
                 send_UDP(listener_socket, "CONN_REQ", MESS_TYPE_LEN, server_port, "CONN_ACK");
 
                 //Ricevo porta del time server
-                recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "TMR_PORT", "TPRT_ACK");
+                recv_UDP(listener_socket, recv_buffer, MAX_LIST_LEN, server_port, "TMR_PORT", "TPRT_ACK");
                 sscanf(recv_buffer, "%s %d", temp_buffer, &time_port);
 
                 //Ricevo lista di vicini
-                recv_UDP(listener_socket, recv_buffer, LIST_MAX_LEN, server_port, "NBR_LIST", "LIST_ACK");
+                recv_UDP(listener_socket, recv_buffer, MAX_LIST_LEN, server_port, "NBR_LIST", "LIST_ACK");
                 ret = sscanf(recv_buffer, "%s %d %d", temp_buffer, &temp_n[0], &temp_n[1]);
 
                 switch(ret){
@@ -450,7 +434,7 @@ int main(int argc, char** argv){
             int util_port;
             char mess_type_buffer[MESS_TYPE_LEN+1];
 
-            util_port = s_recv_UDP(listener_socket, socket_buffer, SOCK_MAX_LEN);
+            util_port = s_recv_UDP(listener_socket, socket_buffer, MAX_ENTRY_UPDATE);
             //Leggo il tipo del messaggio
             sscanf(socket_buffer, "%s", mess_type_buffer);
             mess_type_buffer[MESS_TYPE_LEN] = '\0';

@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <time.h>
 
+//Costanti
+#include "const.h"
+
+//Numero di peer connessi alla rete
 int connected_peers;
 
 //Trova il numero di porta di un peer, data la sua posizione

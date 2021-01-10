@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define DATE_LEN 10
-#define TIME_LEN 8
+//Costanti
+#include "const.h"
 
 char current_d[DATE_LEN+1];
 char current_t[TIME_LEN+1];

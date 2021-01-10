@@ -9,13 +9,10 @@
 #include <unistd.h>
 #include <time.h>
 
-#define MESS_TYPE_LEN 8
-#define MAX_RECV 40
-#define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
-#define USEC 15000
+//Costanti
+#include "const.h"
 
-#define LOCALHOST "127.0.0.1"
-
+//Caso raro di arrivo segnale di chiusura durante un'operazione: comunque si imposta il flag (time server bypassa gli altri scambi)
 int flag;
 
 //Pulizia delle variabili
@@ -100,7 +97,7 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
         //Se arriva qualcosa
         if(FD_ISSET(socket, &readset)){
             //Leggo cosa ho ricevuto
-            ret = recvfrom(socket, recv_buffer, MAX_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
+            ret = recvfrom(socket, recv_buffer, MAX_SOCKET_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
             //Se ho ricevuto lo stesso identico messaggio
             if(util_addr.sin_port == send_port && util_addr.sin_addr.s_addr == send_addr.sin_addr.s_addr && (strncmp(recv_buffer, unacked, unacked_len)==0)){
                 //Riinvio l'ack tornando a inizio while(!received)
@@ -144,7 +141,7 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
     socklen_t recv_addr_len;
     struct sockaddr_in util_addr;
     socklen_t util_len;
-    char recv_buffer[MAX_RECV];
+    char recv_buffer[MAX_SOCKET_RECV];
     struct timeval util_tv;
     fd_set readset;
 
@@ -172,7 +169,7 @@ void send_UDP(int socket, char* buffer, int buff_l, int recv_port, char* acked){
         //Appena la ricevo
         if(FD_ISSET(socket, &readset)){
             //Ricevo ack
-            ret = recvfrom(socket, recv_buffer, MAX_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
+            ret = recvfrom(socket, recv_buffer, MAX_SOCKET_RECV, 0, (struct sockaddr*)&util_addr, &util_len);
             
             //Se ho ricevuto effettivamente l'ack
             if(util_addr.sin_port == recv_addr.sin_port && util_addr.sin_addr.s_addr == recv_addr.sin_addr.s_addr && strcmp(acked, recv_buffer) == 0){
