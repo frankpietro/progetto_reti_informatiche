@@ -1,7 +1,7 @@
 all: ./ds ./peer ./time
 
-./time: ./time.o ./util/msg_time.o ./util/retr_time.o ./util/peer_file.o
-	gcc -Wall ./time.o ./util/msg_time.o ./util/retr_time.o ./util/peer_file.o -o ./time
+./time: ./time.o ./util/util_t.o ./util/retr_time.o ./util/peer_file.o ./util/msg.o
+	gcc -Wall ./time.o ./util/util_t.o ./util/retr_time.o ./util/peer_file.o ./util/msg.o -o ./time
 
 ./peer: ./peer.o ./util/msg.o ./util/util_c.o ./util/retr_time.o
 	gcc -Wall ./peer.o ./util/msg.o ./util/util_c.o ./util/retr_time.o -o ./peer
@@ -9,7 +9,7 @@ all: ./ds ./peer ./time
 ./ds: ./ds.o ./util/peer_file.o ./util/msg.o ./util/util_s.o ./util/retr_time.o
 	gcc -Wall ./ds.o ./util/peer_file.o ./util/msg.o ./util/util_s.o ./util/retr_time.o -o ./ds
 
-./time.o: ./time.c ./util/msg_time.h ./util/retr_time.h ./util/peer_file.h
+./time.o: ./time.c ./util/util_t.h ./util/retr_time.h ./util/peer_file.h
 	gcc -Wall -c ./time.c -o ./time.o
 
 ./peer.o: ./peer.c ./util/msg.h ./util/util_c.h
@@ -24,8 +24,8 @@ all: ./ds ./peer ./time
 ./util/msg.o: ./util/msg.c ./util/msg.h
 	gcc -Wall -c ./util/msg.c -o ./util/msg.o
 
-./util/msg_time.o: ./util/msg_time.c ./util/msg_time.h
-	gcc -Wall -c ./util/msg_time.c -o ./util/msg_time.o
+./util/util_t.o: ./util/util_t.c ./util/util_t.h ./util/msg.h
+	gcc -Wall -c ./util/util_t.c -o ./util/util_t.o
 
 ./util/util_c.o: ./util/util_c.c ./util/util_c.h ./util/retr_time.h ./util/msg.h
 	gcc -Wall -c ./util/util_c.c -o ./util/util_c.o

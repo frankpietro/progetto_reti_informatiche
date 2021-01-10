@@ -10,9 +10,10 @@
 #include <time.h>
 
 //Gesione dei messaggi
-#include "./util/msg_time.h"
+#include "./util/util_t.h"
 #include "./util/retr_time.h"
 #include "./util/peer_file.h"
+#include "./util/msg.h"
 
 #define DATE_LEN 10
 #define TIME_LEN 8

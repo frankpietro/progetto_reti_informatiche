@@ -359,7 +359,7 @@ int main(int argc, char** argv){
 
                     printf("Mi serve lo storico dei dati\n");
                     ret = sprintf(get_past_aggr, "%s %s %s", "AGGR_GET", bound[0], bound[1]);
-                    get_past_aggr[ret] = '\0';
+                    get_past_aggr[ret] = '\0';  
                     send_UDP(listener_socket, get_past_aggr, ret, time_port, "AGET_ACK");
                     
                     printf("Aspetto i dati dal time server\n");
@@ -368,7 +368,7 @@ int main(int argc, char** argv){
                     sscanf(get_past_aggr+9, "%d", &aggr_entries);
                     printf("Entrate da ricevere: %d\n", aggr_entries);
 
-                    while(aggr_entries){
+                    while(aggr_entries--){
                         //Sfrutto stdin_buffer che e' della lunghezza giusta
                         recv_UDP(listener_socket, stdin_buff, 40, time_port, "AGGR_ENT", "AENT_ACK");
                         printf("Ricevuta stringa %s\n", stdin_buff+9);
