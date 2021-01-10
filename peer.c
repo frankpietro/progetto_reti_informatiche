@@ -75,6 +75,10 @@ int main(int argc, char** argv){
     while(1){
         //Controllo con la select cosa e' pronto
         readset = master;
+        
+        if(!flag)
+            printf("Digita un comando:\n");
+
         select(fdmax+1, &readset, NULL, NULL, NULL);
 
         //Messaggio da stdin
@@ -96,7 +100,8 @@ int main(int argc, char** argv){
                 HELP
             */
             if(strcmp(command,"help")==0){
-                comandi_client();
+                for(ret = 0; ret < 5; ret++)
+                    help_client(ret);
             }
 
             /*

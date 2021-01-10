@@ -1,4 +1,5 @@
 void comandi_client();
+void help_client(int);
 int check_dates(char*,char*,char);
 void insert_entry(char,int);
 void insert_entry_string(char*);

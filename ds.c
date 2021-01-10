@@ -64,6 +64,9 @@ int main(int argc, char** argv){
     while(1){
         //printf("Inizio\n");
         readset = master;
+
+        printf("Digita un comando:\n");
+
         //Controllo se c'e' qualcosa pronto
         select(fdmax+1, &readset, NULL, NULL, NULL);
 
@@ -214,6 +217,8 @@ int main(int argc, char** argv){
                 send_UDP(server_socket, entr_repl, ret, peer_port, "EREP_ACK");
             }
 
+            //Funzioni per get e stop: duplicati facilmente eliminabili parametrizzando l'indice del lock da richiedere e inserendolo nel messaggio
+
             //Controllo di blocco (se qualcuno sta eseguendo una get, nessuna operazione concessa)
             if(strcmp(recv_buffer, "IS_G_LCK") == 0){
 
@@ -230,6 +235,23 @@ int main(int argc, char** argv){
                 mutex_buffer[len] = '\0';
 
                 send_UDP(server_socket, mutex_buffer, len, peer_port, "GMTX_ACK");
+            }
+
+            //Controllo di blocco (se qualcuno sta eseguendo una stop, nessuna operazione concessa)
+            if(strcmp(recv_buffer, "IS_S_LCK") == 0){
+                char mutex_buffer[MAX_LOCK_LEN];
+                int len;
+                //Invio ack
+                ack_UDP(server_socket, "ISSL_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
+                if(mutex_peer[1])
+                    printf("Peer %d sta eseguendo la get\n", mutex_peer[1]);
+                
+                len = sprintf(mutex_buffer, "%s %d", "STP_MUTX", mutex_peer[1]);
+                mutex_buffer[len] = '\0';
+
+                send_UDP(server_socket, mutex_buffer, len, peer_port, "SMTX_ACK");
             }
 
             //Richiesta di blocco (mutua esclusione per la get)
@@ -252,38 +274,6 @@ int main(int argc, char** argv){
                     mutex_peer[0] = peer_port;
             }
 
-            //Richiesta di sblocco (mutua esclusione per la get)
-            if(strcmp(recv_buffer, "GET_UNLK") == 0){
-                //Invio ack
-                ack_UDP(server_socket, "GNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
-                
-                //Questa parte non dovrebbe essere mai eseguita
-                if(!mutex_peer[0]){
-                    printf("Errore, apparentemente nessuno sta lavorando in mutua esclusione\n");
-                    continue;
-                }
-
-                mutex_peer[0] = 0;
-            }
-
-            //Controllo di blocco (se qualcuno sta eseguendo una stop, nessuna operazione concessa)
-            if(strcmp(recv_buffer, "IS_S_LCK") == 0){
-
-                char mutex_buffer[MAX_LOCK_LEN];
-                int len;
-                //Invio ack
-                ack_UDP(server_socket, "ISSL_ACK", peer_port, socket_buffer, strlen(socket_buffer));
-                
-                //Se qualcuno ha gia' richiesto la stessa operazione appena prima, interrompo l'esecuzione
-                if(mutex_peer[1])
-                    printf("Peer %d sta eseguendo la get\n", mutex_peer[1]);
-                
-                len = sprintf(mutex_buffer, "%s %d", "STP_MUTX", mutex_peer[1]);
-                mutex_buffer[len] = '\0';
-
-                send_UDP(server_socket, mutex_buffer, len, peer_port, "SMTX_ACK");
-            }
-
             //Richiesta di blocco (mutua esclusione per la stop)
             if(strcmp(recv_buffer, "STP_LOCK") == 0){
                 char mutex_buffer[MAX_LOCK_LEN];
@@ -304,6 +294,20 @@ int main(int argc, char** argv){
                     mutex_peer[1] = peer_port;
             }
 
+            //Richiesta di sblocco (mutua esclusione per la get)
+            if(strcmp(recv_buffer, "GET_UNLK") == 0){
+                //Invio ack
+                ack_UDP(server_socket, "GNLK_ACK", peer_port, socket_buffer, strlen(socket_buffer));
+                
+                //Questa parte non dovrebbe essere mai eseguita
+                if(!mutex_peer[0]){
+                    printf("Errore, apparentemente nessuno sta lavorando in mutua esclusione\n");
+                    continue;
+                }
+
+                mutex_peer[0] = 0;
+            }
+
             //Richiesta di sblocco (mutua esclusione per la stop)
             if(strcmp(recv_buffer, "STP_UNLK") == 0){
                 //Invio ack
@@ -317,6 +321,8 @@ int main(int argc, char** argv){
 
                 mutex_peer[1] = 0;
             }
+
+            //Funzioni per get e stop: duplicati facilmente eliminabili parametrizzando l'indice del lock da richiedere e inserendolo nel messaggio
 
             //Saluto del timer
             if(strcmp(recv_buffer, "TM_HELLO") == 0){

@@ -33,6 +33,43 @@ void comandi_client(){
     printf("stop --> richiede disconnessione dalla rete\n");
 }
 
+//Ulteriore ausilio per comprendere i comandi
+void help_client(int i){
+    switch(i){
+        case 0: //help
+            printf("help --> mostra elenco comandi e significato\n");
+            printf("Parametri: nessuno\n");
+            break;
+        case 1: //start
+            printf("start <DS_addr> <DS_port> --> richiede al Discovery Server connessione alla rete\n");
+            printf("Parametri:\n");
+            printf(" - DS_addr --> stringa con IP in formato presentazione\n");
+            printf(" - DS_port --> porta sulla quale gira il processo server, compresa tra 1024 e 65535\n");
+            break;
+        case 2:
+            printf("add <type> <quantity> --> aggiunge una entry nel registro giornaliero del peer\n");
+            printf("Parametri:\n");
+            printf(" - type --> carattere per indicare se tamponi o nuovi casi (inserire rispettivamente 't' o 'n')\n");
+            printf(" - quantity --> quantita' del dato da aggiungere (inserire intero positivo)\n");
+            break;
+        case 3:
+            printf("get <aggr> <type> [<date1> <date2>] --> richiede un dato aggregato\n");
+            printf("Parametri:\n");
+            printf(" - aggr --> tipo di aggregazione, se totale o variazioni giornaliere (inserire rispettivamente 't' o 'v')\n");
+            printf(" - type --> carattere per indicare se tamponi o nuovi casi (inserire rispettivamente 't' o 'n')\n");
+            printf(" - date1 --> lower bound della ricerca; inserire * se non si vuole lower bound\n");
+            printf(" - date2 --> upper bound della ricerca; inserire * se non si vuole lower bound\n");
+            printf("Nota: se non si vuole nessun bound, non inserire * *, ma lasciare senza parametri\n");
+            break;
+        case 4:
+            printf("stop --> richiede disconnessione dalla rete\n");
+            printf("Parametri: nessuno\n");
+            break;
+        default:
+            printf("Errore nella chiamata\n");
+    }
+}
+
 /*
 Validazione input get
 */
