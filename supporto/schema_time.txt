@@ -1,4 +1,4 @@
-SCHEMA TIME
+SCHEMA TIME SERVER (da avviare prima di ogni peer)
 
 imposta a 0 un flag
 aspetta un messaggio per al massimo 10 minuti

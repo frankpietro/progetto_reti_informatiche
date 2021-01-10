@@ -283,7 +283,11 @@ int main(int argc, char** argv){
                     strcpy(bound[1], "*");
 
 
-                //TUTTA QUESTA PARTE SERVE SOLO SE ANCHE I DATI DEL GIORNO VANNO CALCOLATI
+                /*
+                    Questa porzione di codice si occupa di raccogliere i dati aggregati del giorno in corso.
+                    Nel caso si voglia considerare soltanto dati aggregati relativi a registri chiusi,
+                    e' sufficiente commentarla e aggiustare il controllo sulle date
+                */
                 if(ret == 3 || strcmp(bound[1], "*") == 0){
                     sum_entr = 0;
                     //Invio richiesta al server
@@ -361,8 +365,6 @@ int main(int argc, char** argv){
                         }
                     }
                 }
-
-                //Che abbia calcolato o no i dati del giorno, proseguo
 
                 //Se la data di inizio e' oggi, ho finito perche' veniva solo richiesto il totale di oggi
                 if(!is_today(bound[0])){
