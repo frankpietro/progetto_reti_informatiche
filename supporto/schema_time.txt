@@ -28,5 +28,7 @@ in ogni caso {
         le copia su un file provvisorio
         esegue la somma per tipologia
         invia una copia di questa somma a ogni peer
+        rimuove il file temporaneo con le entrate
+        resetta il file con l'aggregato giornaliero
     }
 }    

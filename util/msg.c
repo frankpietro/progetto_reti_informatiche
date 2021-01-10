@@ -18,6 +18,7 @@
 
 int flag;
 
+//Pulizia delle variabili
 void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     memset(addr_p, 0, sizeof((*addr_p)));
 	addr_p->sin_family = AF_INET;
@@ -27,6 +28,7 @@ void clear_address(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     (*len_p) = sizeof((*addr_p));\
 }
 
+//Inizializzazione di un socket - restituisce il descrittore di socket
 int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     int ret;
     int sock;
@@ -42,6 +44,7 @@ int prepare(struct sockaddr_in* addr_p, socklen_t* len_p, int port){
     return sock;
 }
 
+//Ricezione in un contesto sicuro, dopo una select
 int s_recv_UDP(int socket, char* buffer, int buff_l){
     struct sockaddr_in send_addr;
     socklen_t send_addr_len;
@@ -83,8 +86,6 @@ void ack_UDP(int socket, char* buffer, int send_port, char* unacked, int unacked
         do {
             ret = sendto(socket, buffer, MESS_TYPE_LEN+1, 0, (struct sockaddr*)&send_addr, send_addr_len);
         } while(ret<0);
-
-        printf("%s\n", unacked);
 
         //Attesa
         util_tv.tv_sec = 0;

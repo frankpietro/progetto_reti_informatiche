@@ -133,6 +133,7 @@ int main(int argc, char** argv){
 
         }
 
+        //Processo di salvataggio dati e pulizia registri giornalieri
         else if(pointer != NULL && daily_flag == 0){
             daily_flag = 1;
 
@@ -190,9 +191,12 @@ int main(int argc, char** argv){
             //Cancella il file delle entries giornaliere
             remove("entries.txt");
 
-        }
+            //Cancella il file con gli aggregati giornalieri (sfrutto recv_buffer e i)
+            i = sprintf(recv_buffer, "%s%s_%s", "./ds_dir/", current_d, "entries.txt");
+            recv_buffer[i] = '\0';
+            remove(recv_buffer);
 
-        printf("Uscito dal while\n");
+        }
     
         
     }

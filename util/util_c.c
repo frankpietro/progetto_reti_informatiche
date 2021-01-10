@@ -271,6 +271,38 @@ int check_aggr(int entries, char type){
     return (count == entries) ? sum : 0;
 }
 
+//Controllo che un'entry non sia gia' nel file
+int is_entry_in(char* entry){
+    FILE *fd;
+    char filename[MAX_FILENAME_LEN];
+    char tm[TIME_LEN];
+    char t;
+    int q;
+    char p[6*MAX_CONNECTED_PEERS];
+    char e[MAX_ENTRY_UPDATE];
+    int ret;
+
+    retrieve_time();
+
+    sprintf(filename, "%s%s_%d.txt", "./peer_dir/", current_d, my_port);
+
+    fd = fopen(filename, "r");
+    if(fd == NULL)
+        return 0;
+    //Scorro tutto il file per vedere se la trovo
+    while(fscanf(fd, "%s %c %d %s", tm, &t, &q, p) != EOF){
+        ret = sprintf(e, "%s %c %d %s", tm, t, q, p);
+        e[ret] = '\0';
+        if(strcmp(entry, e) == 0){
+            printf("Entry gia' presente, da non inserire\n");
+            return 1;
+        }
+    }
+    //Se arrivo qui non c'e'
+
+    return 0;
+}
+
 //Riceve tutte le entrate che mancavano al momento della chiamata della get e le aggiunge al file delle entrate
 void wait_for_entries(int peer_entr, int tot_entr, char type){
     int ret;
@@ -302,8 +334,10 @@ void wait_for_entries(int peer_entr, int tot_entr, char type){
         }
         ret = sprintf(get_buffer, "%s %c %d %s", util_buffer, r_type, r_quantity, entry_ins_buffer);
         get_buffer[ret] = 0;
-        insert_entry_string(get_buffer);
-        peer_entr++;
+        if(!is_entry_in(get_buffer)){
+            insert_entry_string(get_buffer);
+            peer_entr++;
+        }
     }
 }
 

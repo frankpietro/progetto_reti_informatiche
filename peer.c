@@ -32,6 +32,7 @@
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 #define MAX_LOCK_LEN 14
 #define MAX_PAST_AGGR 30 //heeader e due date
+#define LOCALHOST "127.0.0.1"
 
 //Variabili
 int my_port;
@@ -141,8 +142,14 @@ int main(int argc, char** argv){
                     continue;
                 }
 
-                server_port %= 65536;
-                
+                //Controlli basic
+                if(strcmp(DS_addr, LOCALHOST) != 0 || server_port > 65536){
+                    printf("Errore nel passaggio dei parametri del server\n");
+                    server_port = -1;
+                    continue;
+                }
+
+
                 //Start: non puo' essere eseguita se in corso una get o una stop
                 if(check_g_lock() || check_s_lock()){
                     printf("Comando %s non eseguibile adesso, riprova piu' tardi\n", command);
