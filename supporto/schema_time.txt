@@ -1,19 +1,31 @@
 SCHEMA TIME
 
 imposta a 0 un flag
-ciclicamente {
-    se il flag e' a 1 {
+aspetta un messaggio per al massimo 10 minuti
+se lo riceve {
+    se il messaggio proviene dal server {
+        invia ack
+        si spegne
+    }
+    se il messaggio e' di richiesta dati aggregati per una get {
+        invia ack
+        calcola il numero di entrate che deve inviare
+        invia quell'informazione
+        invia ogni entrata
+    }
+}
+in ogni caso {
+    controlla se e' orario di chiusura per i peer
+    se il flag e' a 1 e non e' orario di chiusura {
         lo abbassa
         invia a tutti i peer il segnale di reset
     }
-    altrimenti {
-        se l'orario e' tra le 17:50 e le 18 {
-            blocca tutti i peer
-            aspetta che finiscano eventuali operazioni in corso
-            si fa inviare le loro entries
-            le copia su un file provvisorio
-            esegue la somma per tipologia
-            invia una copia di questa somma a ogni peer
-        }
+    se il flag e' a zero ed e' orario di chiusura {
+        blocca tutti i peer
+        aspetta che finiscano eventuali operazioni in corso
+        si fa inviare le loro entries
+        le copia su un file provvisorio
+        esegue la somma per tipologia
+        invia una copia di questa somma a ogni peer
     }
-}
+}    

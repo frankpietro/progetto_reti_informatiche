@@ -31,14 +31,15 @@
 #define MAX_SUM_ENTRIES 19 //Massimo totale aggregato: a 10 cifre
 #define ALL_PEERS -1 //recv_UDP puo' ricevere da qualunque indirizzo
 #define MAX_LOCK_LEN 14
+#define MAX_PAST_AGGR 30 //heeader e due date
 
 //Variabili
 int my_port;
 int listener_socket;    //Descrittore del socket di ascolto
 struct sockaddr_in listener_addr;   //Struttura per gestire il socket di ascolto
 socklen_t listener_addr_len;
-int time_socket;    //Descrittore del socket di ascolto
-struct sockaddr_in time_addr;   //Struttura per gestire il socket di ascolto
+
+struct sockaddr_in time_addr;
 socklen_t time_addr_len;
 
 int ret;    //Variabile di servizio
@@ -220,7 +221,7 @@ int main(int argc, char** argv){
             else if(strcmp(command,"get")==0){
                 char aggr;
                 char type;
-                char bounds[2][DATE_LEN];
+                char bound[2][DATE_LEN+1];
                 int tot_entr;
                 int peer_entr;
                 int sum_entr;
@@ -232,8 +233,11 @@ int main(int argc, char** argv){
                     continue;
                 }
 
-                ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bounds[0], bounds[1]);
+                ret = sscanf(stdin_buff,"%s %c %c %s %s", command, &aggr, &type, bound[0], bound[1]);
                 //Numero di parametri
+                bound[0][DATE_LEN] = '\0';
+                bound[1][DATE_LEN] = '\0';
+
                 if(!(ret == 3 || ret == 5)){
                     printf("Errore nel numero di parametri passati\n");
                     continue;
@@ -245,7 +249,7 @@ int main(int argc, char** argv){
                 }
                 //Controllo sulle date
                 if(ret == 5){
-                    if(!check_dates(bounds[0], bounds[1], aggr))
+                    if(!check_dates(bound[0], bound[1], aggr))
                         continue;
                 }
 
@@ -257,80 +261,121 @@ int main(int argc, char** argv){
                     continue;
                 }
 
-                //Invio richiesta al server
-                ret = sprintf(get_buffer, "%s %c", "ENTR_REQ", type);
-                get_buffer[ret] = '\0';
-                send_UDP(listener_socket, get_buffer, ret, server_port, "EREQ_ACK");
-                
-                //Ricevo risposta
-                recv_UDP(listener_socket, get_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
-                sscanf(get_buffer, "%s %d", command, &tot_entr); //command non serve piu'
-
-                peer_entr = count_entries(type);
-
-                printf("Entries nel server: %d; entries qui: %d\n", tot_entr, peer_entr);
-
-                //Se nessuna entry, inutile continuare
-                if(!tot_entr)
-                    printf("Nessun dato aggregato da calcolare\n");
-
-                //Se ho tutti i dati che servono, eseguo il calcolo e lo scrivo
-                else if(tot_entr == peer_entr){
-                    sum_entr = sum_entries(type);
-                    write_aggr(tot_entr, sum_entr, type);
+                //Riempio i buffer delle date nel caso non siano state inserite dall'utente
+                if(ret == 3){
+                    strcpy(bound[0], "*");
+                    strcpy(bound[1], "*");
                 }
-                
-                //Altrimenti
-                else {
-                    //Se non ho vicini non posso calcolare nulla
-                    if(neighbor[0] == -1 && neighbor[1] == -1)
-                        printf("Errore insolubile, impossibile calcolare il dato richiesto\n");
+
+                //Se la data di fine e' oggi va bene l'asterisco
+                if(is_today(bound[1]))
+                    strcpy(bound[1], "*");
+
+
+                //TUTTA QUESTA PARTE SERVE SOLO SE ANCHE I DATI DEL GIORNO VANNO CALCOLATI
+                if(ret == 3 || strcmp(bound[1], "*") == 0){
+                    //Invio richiesta al server
+                    ret = sprintf(get_buffer, "%s %c", "ENTR_REQ", type);
+                    get_buffer[ret] = '\0';
+                    send_UDP(listener_socket, get_buffer, ret, server_port, "EREQ_ACK");
                     
+                    //Ricevo risposta
+                    recv_UDP(listener_socket, get_buffer, MAX_ENTRY_REP, server_port, "ENTR_REP", "EREP_ACK");
+                    sscanf(get_buffer, "%s %d", command, &tot_entr); //command non serve piu'
+
+                    peer_entr = count_entries(type);
+
+                    printf("Entries nel server: %d; entries qui: %d\n", tot_entr, peer_entr);
+
+                    //Se nessuna entry, inutile continuare
+                    if(!tot_entr)
+                        printf("Nessun dato aggregato da calcolare\n");
+
+                    //Se ho tutti i dati che servono, eseguo il calcolo e lo scrivo
+                    else if(tot_entr == peer_entr){
+                        sum_entr = sum_entries(type);
+                        write_aggr(tot_entr, sum_entr, type);
+                    }
+                    
+                    //Altrimenti
                     else {
-                        printf("Devo chiedere informazioni ai miei vicini\n");
-                        //Controllo se qualche peer ha il dato aggregato pronto
+                        //Se non ho vicini non posso calcolare nulla
+                        if(neighbor[0] == -1 && neighbor[1] == -1)
+                            printf("Errore insolubile, impossibile calcolare il dato richiesto\n");
                         
-                        //Posso riciclare il buffer get_buffer
-                        ret = sprintf(get_buffer, "%s %d %d %c", "AGGR_REQ", my_port, tot_entr, type);
-                        get_buffer[ret] = '\0';
-                        
-                        send_UDP(listener_socket, get_buffer, ret, neighbor[0], "AREQ_ACK");
-                        
-                        //Posso sfruttare get_buffer
-                        recv_UDP(listener_socket, get_buffer, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
-
-                        printf("Ricevuto %s\n", get_buffer);
-
-                        //Posso riciclare il buffer command
-                        sscanf(get_buffer, "%s %d", command, &sum_entr);
-                        
-                        if(sum_entr != 0){
-                            printf("Ho ottenuto il dato che cercavo\n");
-                            write_aggr(tot_entr, sum_entr, type);
-                        }
-                        else{
-                            printf("Nessuno ha gia' pronto il dato cercato\n");
-                            //Necessario inviare a tutti la richiesta di nuove entries
-                            ret = sprintf(get_buffer, "%s %d %c", "EP2P_REQ", my_port, type);
+                        else {
+                            printf("Devo chiedere informazioni ai miei vicini\n");
+                            //Controllo se qualche peer ha il dato aggregato pronto
+                            
+                            //Posso riciclare il buffer get_buffer
+                            ret = sprintf(get_buffer, "%s %d %d %c", "AGGR_REQ", my_port, tot_entr, type);
                             get_buffer[ret] = '\0';
-                            printf("Faccio partire il giro di richieste di entries\n");
-                            send_UDP(listener_socket, get_buffer, ret, neighbor[0], "2REQ_ACK");
-                            //Aspetto tutte le entries che mi mancano
-                            wait_for_entries(peer_entr, tot_entr, type);
+                            
+                            send_UDP(listener_socket, get_buffer, ret, neighbor[0], "AREQ_ACK");
+                            
+                            //Posso sfruttare get_buffer
+                            recv_UDP(listener_socket, get_buffer, MAX_SUM_ENTRIES, ALL_PEERS, "AGGR_REP", "AREP_ACK");
 
-                            printf("Tutte le entries necessarie sono arrivate a destinazione\n");
+                            printf("Ricevuto %s\n", get_buffer);
 
-                            ret = (neighbor[1] != -1) ? 1 : 0;
-                            //Ricevo HLT per verificare che sia tutto corretto
-                            recv_UDP(listener_socket, get_buffer, MESS_TYPE_LEN, neighbor[ret], "EP2P_HLT", "2HLT_ACK");
-                            //Eseguo il calcolo
-                            sum_entr = sum_entries(type);
-                            //Lo riporto sul file
-                            write_aggr(tot_entr, sum_entr, type);
+                            //Posso riciclare il buffer command
+                            sscanf(get_buffer, "%s %d", command, &sum_entr);
+                            
+                            if(sum_entr != 0){
+                                printf("Ho ottenuto il dato che cercavo\n");
+                                write_aggr(tot_entr, sum_entr, type);
+                            }
+                            else{
+                                printf("Nessuno ha gia' pronto il dato cercato\n");
+                                //Necessario inviare a tutti la richiesta di nuove entries
+                                ret = sprintf(get_buffer, "%s %d %c", "EP2P_REQ", my_port, type);
+                                get_buffer[ret] = '\0';
+                                printf("Faccio partire il giro di richieste di entries\n");
+                                send_UDP(listener_socket, get_buffer, ret, neighbor[0], "2REQ_ACK");
+                                //Aspetto tutte le entries che mi mancano
+                                wait_for_entries(peer_entr, tot_entr, type);
+
+                                printf("Tutte le entries necessarie sono arrivate a destinazione\n");
+
+                                ret = (neighbor[1] != -1) ? 1 : 0;
+                                //Ricevo HLT per verificare che sia tutto corretto
+                                recv_UDP(listener_socket, get_buffer, MESS_TYPE_LEN, neighbor[ret], "EP2P_HLT", "2HLT_ACK");
+                                //Eseguo il calcolo
+                                sum_entr = sum_entries(type);
+                                //Lo riporto sul file
+                                write_aggr(tot_entr, sum_entr, type);
+                            }
+
                         }
-
                     }
                 }
+
+                //Che abbia calcolato o no i dati del giorno, proseguo
+
+                //Se la data di inizio e' oggi, ho finito perche' veniva solo richiesto il totale di oggi
+                if(!is_today(bound[0]) || ret == 3){
+                    char get_past_aggr[MAX_PAST_AGGR];
+                    int aggr_entries;
+
+                    printf("Mi serve lo storico dei dati\n");
+                    ret = sprintf(get_past_aggr, "%s %s %s", "AGGR_GET", bound[0], bound[1]);
+                    get_past_aggr[ret] = '\0';
+                    send_UDP(listener_socket, get_past_aggr, ret, time_port, "AGET_ACK");
+                    
+                    printf("Aspetto i dati dal time server\n");
+                    //Sfrutto get_past_aggr
+                    recv_UDP(listener_socket, get_past_aggr, MAX_PAST_AGGR, time_port, "AGGR_CNT", "ACNT_ACK");
+                    sscanf(get_past_aggr+9, "%d", &aggr_entries);
+                    printf("Entrate da ricevere: %d\n", aggr_entries);
+
+                    while(aggr_entries){
+                        //Sfrutto stdin_buffer che e' della lunghezza giusta
+                        recv_UDP(listener_socket, stdin_buff, 40, time_port, "AGGR_ENT", "AENT_ACK");
+                        printf("Ricevuta stringa %s\n", stdin_buff+9);
+                    }
+
+                }
+
 
                 //Rilascio risorsa per la get
                 send_UDP(listener_socket, "GET_UNLK", MESS_TYPE_LEN, server_port, "GNLK_ACK");
@@ -577,7 +622,10 @@ int main(int argc, char** argv){
                 //Ricezione del totale
                 if(strcmp(mess_type_buffer, "FLAG_TOT") == 0){
                     ack_UDP(listener_socket, "FTOT_ACK", util_port, socket_buffer, strlen(socket_buffer));
+                    
+                    //Mantenere lo storico degli aggregati in locale: si puo' fare, ma rende molto piu' lenta la procedura
                     //register_daily_tot(socket_buffer+9);
+
                     printf("Arrivati gli aggregati giornalieri\n");
                     print_daily_aggr(socket_buffer+9);
                 }

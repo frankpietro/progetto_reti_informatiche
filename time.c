@@ -77,13 +77,45 @@ int main(int argc, char** argv){
         select(fdmax+1, &readset, NULL, NULL, &timeout);
 
         if(FD_ISSET(time_socket, &readset)){
-            printf("Ricevuto messaggio sul socket\n");
+            int util_port;
+            char mess_type_buffer[MESS_TYPE_LEN+1];
+
+            util_port = s_recv_UDP(time_socket, recv_buffer, MAX_ENTRY_UPDATE);
+            //Leggo il tipo del messaggio
+            sscanf(recv_buffer, "%s", mess_type_buffer);
+            mess_type_buffer[MESS_TYPE_LEN] = '\0';
+            printf("Ricevuto messaggio %s da %d sul socket\n", recv_buffer, util_port);
+            
+            if(util_port == server_port){
+                //Server: scrive solo per chiudere
+                //Leggere header, inviare ack
+                close(time_socket);
+                _exit(0);
+            }
+
+            if(strcmp(mess_type_buffer, "AGGR_GET") == 0){
+                char bound[2][DATE_LEN+1];
+                ack_UDP(time_socket, "AGET_ACK", util_port, recv_buffer, strlen(recv_buffer));
+                printf("Ricevuto messaggio %s\n", recv_buffer);
+                sscanf(recv_buffer+9,"%s %s", bound[0], bound[1]);
+                bound[0][DATE_LEN] = '\0';
+                bound[1][DATE_LEN] = '\0';
+                //Per i prossimi messaggi riciclo recv_buffer e uso i come variabile di servizio
+                i = sprintf(recv_buffer, "%s %d", "AGGR_CNT", count_aggr_entries(bound[0], bound[1]));
+                recv_buffer[i] = '\0';
+                send_UDP(time_socket, recv_buffer, i, util_port, "ACNT_ACK");
+
+                //Invio tutte le entrate al peer che le ha chieste
+                send_entries(util_port);
+
+            }
+
         }
 
 
         //Dopo la ricezione del messaggio eseguo comunque il controllo
         retrieve_time();
-        pointer = strstr(current_t, ":");
+        pointer = strstr(current_t, "17:5");
         
         //Resetto i peer se flag settato e finito periodo di chiusura
         if(daily_flag == 1 && pointer == NULL){

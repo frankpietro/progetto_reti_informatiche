@@ -141,6 +141,14 @@ se informazioni da stdin {
                     }
                 }
             }
+            se data di inizio diversa da oggi {
+                richiedo dati al time server
+                ricevo numero di entries che mi servono
+                per ogni entry da ricevere {
+                    ricevo il messaggio
+                    lo copio su un file temporaneo
+                }
+            }
             rilascio mutua esclusione
         }
         se stop {

@@ -15,7 +15,7 @@
 
 #define DATE_LEN 10
 #define TIME_LEN 8
-#define MIN_YEAR 1990
+#define MIN_YEAR 2021
 #define MAX_CONNECTED_PEERS 100
 #define MAX_FILENAME_LEN 31
 #define MAX_ENTRY_UPDATE 630 //Header, numero peer e lunghezza massima entry (lunghezza a 5 cifre di 99 peer con virgola, orario, tipo, numero)
@@ -58,12 +58,18 @@ int is_valid_date(int y, int m, int d){
     this_date[1] = m;
     this_date[2] = d;
     //Basic
-    if(y < MIN_YEAR || m < 1 || m > 12 || d < 1 || d > 31)
+    if(y < MIN_YEAR || m < 1 || m > 12 || d < 1 || d > 31){
+        printf("E1\n");
         return 0;
+    }
+    
+    retrieve_time();
     sscanf(current_d, "%d:%d:%d", &c_date[0], &c_date[1], &c_date[2]);
     //Sfrutto la funzione is_real_period
-    if(!is_real_period(this_date, c_date, 't'))
+    if(!is_real_period(this_date, c_date, 't')){
+        printf("E2\n");
         return 0;
+    }
     //Advanced
     if(m == 4 || m == 6 || m == 9 || m == 11)
         return (d <= 30);
@@ -230,7 +236,7 @@ void write_aggr(int count, int sum, char type){
         printf("tamponi");
     else
         printf("nuovi casi");
-    printf(": %d\n", sum);
+    printf(" odierni: %d\n", sum);
 
     retrieve_time();
 
@@ -430,6 +436,35 @@ void send_double_missing_entries(){
     printf("Fine delle entries da inviare\n");
 }
 
+//Controlla se una data e' quella odierna
+int is_today(char* bound_date){
+    int b_date[3];
+    int c_date[3];
+
+    retrieve_time();
+    sscanf(bound_date, "%d:%d:%d", &b_date[2], &b_date[1], &b_date[0]);
+    sscanf(current_d, "%d:%d:%d", &c_date[0], &c_date[1], &c_date[2]);
+
+    return (b_date[0] == c_date[0] && b_date[1] == c_date[1] && b_date[2] == c_date[2]);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //Controlla che nessuno stia eseguendo la get
 int check_g_lock(){
     char lock_buffer[MAX_LOCK_LEN];
@@ -490,7 +525,6 @@ int stop_lock(){
     return flag;
 }
 
-
 //Registra i totali del giorno
 void register_daily_tot(char* aggr){
     FILE *fd;
@@ -513,11 +547,11 @@ void register_daily_tot(char* aggr){
 }
 
 //Stampo gli aggregati giornalieri e pulisco la memoria
-void printt_daily_buffer(char* entr){
+void print_daily_aggr(char* entr){
     int tot[2];
     char filename[MAX_FILENAME_LEN];
 
-    sprintf(entr, "%d %d", &tot[0], &tot[1]);
+    sscanf(entr, "%d %d", &tot[0], &tot[1]);
     printf("Tamponi di oggi: %d;\nnuovi casi di oggi: %d\n", tot[0], tot[1]);
 
     //File giornalieri: non servono piu'

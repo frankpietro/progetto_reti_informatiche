@@ -9,6 +9,7 @@ int check_aggr(int,char);
 void wait_for_entries(int,int,char);
 void send_missing_entries(int,char,char*, char*);
 void send_double_missing_entries();
+int is_today(char*);
 int check_g_lock();
 int get_lock();
 int check_s_lock();
