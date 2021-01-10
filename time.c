@@ -67,7 +67,7 @@ int main(int argc, char** argv){
 
         else {
             retrieve_time();
-            pointer = strstr(current_t, ":");
+            pointer = strstr(current_t, "17:5");
             if(pointer != NULL){
                 daily_flag = 1;
 
@@ -125,7 +125,7 @@ int main(int argc, char** argv){
             printf("Uscito dal while\n");
         }
         
-        sleep(10);
+        sleep(600);
     }
 
     return 0;
