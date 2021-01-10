@@ -88,8 +88,8 @@ int main(int argc, char** argv){
             printf("Ricevuto messaggio %s da %d sul socket\n", recv_buffer, util_port);
             
             if(util_port == server_port){
-                //Server: scrive solo per chiudere
-                //Leggere header, inviare ack
+                ack_UDP(time_socket, "S_XT_ACK", server_port, recv_buffer, strlen(recv_buffer));
+                printf("Chiusura time server/n");
                 close(time_socket);
                 _exit(0);
             }
@@ -108,6 +108,8 @@ int main(int argc, char** argv){
 
                 //Invio tutte le entrate al peer che le ha chieste
                 send_entries(util_port);
+
+                remove("temp_send.txt");
 
             }
 

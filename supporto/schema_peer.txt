@@ -148,6 +148,7 @@ se informazioni da stdin {
                     ricevo il messaggio
                     lo copio su un file temporaneo
                 }
+                stampo la risposta alla richiesta dell'utente
             }
             rilascio mutua esclusione
         }

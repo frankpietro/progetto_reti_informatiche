@@ -62,7 +62,7 @@ int is_valid_date(int y, int m, int d){
         printf("E1\n");
         return 0;
     }
-    
+
     retrieve_time();
     sscanf(current_d, "%d:%d:%d", &c_date[0], &c_date[1], &c_date[2]);
     //Sfrutto la funzione is_real_period
@@ -448,23 +448,6 @@ int is_today(char* bound_date){
     return (b_date[0] == c_date[0] && b_date[1] == c_date[1] && b_date[2] == c_date[2]);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //Controlla che nessuno stia eseguendo la get
 int check_g_lock(){
     char lock_buffer[MAX_LOCK_LEN];
@@ -569,4 +552,110 @@ int is_flag_up(){
 
     pointer = strstr(current_t, "17:5");
     return (pointer != NULL) ? 1 : 0;
+}
+
+//Inserisce in un file temporaneo le entries dal time server
+void insert_temp(char* entry){
+    FILE *fd;
+
+    fd = fopen("temp_entries.txt", "a");
+    fprintf(fd, "%s\n", entry);
+    fclose(fd);
+}
+
+//Converte una data in formato dd:mm:yyyy
+void convert_out_date(char* date){
+    int d,m,y;
+
+    sscanf(date, "%d:%d:%d", &y, &m, &d);
+    sprintf(date, "%d:%d:%d", d,m,y);
+}
+
+//Stampa i risultati finali della get
+void print_results(char aggr, char type, int sum_today, char* date1, char* date2){
+    FILE *fd1;
+    
+
+    //Caso 1: richiesto totale
+    if(aggr == 't'){
+        int sum;
+        int t,c;
+        char u_date[DATE_LEN];
+
+        date1 = (strcmp(date1, "*") == 0) ? "1:1:2021" : date1;
+        date2 = (strcmp(date2, "*") == 0) ? u_date : date2;
+        
+        sum = 0;
+        fd1 = fopen("temp_entries.txt", "r");
+        //Somma il valore giusto
+        while(fscanf(fd1, "%s %d %d", u_date, &t, &c) != EOF){
+            if(type == 't')
+                sum += t;
+            else
+                sum += c;
+        }
+
+        fclose(fd1);
+
+        if(sum_today != -1)
+            sum += sum_today;
+        
+        strcpy(u_date, current_d);
+        convert_out_date(u_date);
+
+        //Stampa
+        printf("Totale ");
+        if(type == 't')
+            printf("tamponi ");
+        else
+            printf("nuovi casi ");
+        printf("da %s a %s: %d\n", (strcmp(date1, "*") == 0) ? "1:1:2021" : date1, (strcmp(date2, "*") == 0) ? u_date : date2, sum);
+    }
+
+    //Caso 2: richiesta variazione
+    else {
+        FILE *fd2;
+        //int var;
+        int t[2];
+        int c[2];
+        char u_date[2][DATE_LEN+1];
+
+        fd1 = fopen("temp_entries.txt", "r");
+        fd2 = fopen("temp_entries.txt", "r");
+
+        printf("Elenco variazioni di ");
+        if(type == 't')
+            printf("tamponi ");
+        else
+            printf("nuovi casi ");        
+        printf("richiestse:\n");
+        //Faccio scorrere i puntatori a distanza di 1
+        fscanf(fd1, "%s %d %d", u_date[0], &t[0], &c[0]);
+        u_date[0][DATE_LEN] = '\0';
+        while(fscanf(fd1, "%s %d %d", u_date[0], &t[0], &c[0]) != EOF){
+            u_date[0][DATE_LEN] = '\0';
+            fscanf(fd2, "%s %d %d", u_date[1], &t[1], &c[1]);
+            u_date[1][DATE_LEN] = '\0';
+            convert_out_date(u_date[1]);
+            convert_out_date(u_date[0]);
+            printf(" - da %s a %s: %d\n", u_date[1], u_date[0], (type == 't') ? t[0] - t[1] : c[0] - c[1]);
+        }
+
+        fscanf(fd2, "%s %d %d", u_date[1], &t[1], &c[1]);
+        u_date[1][DATE_LEN] = '\0';
+
+        fclose(fd1);
+        fclose(fd2);
+
+        if(sum_today != -1){
+            strcpy(u_date[0], current_d);
+            convert_out_date(u_date[0]);
+            convert_out_date(u_date[1]);
+            printf(" - da %s a %s: %d\n", u_date[1], u_date[0], (type == 't') ? sum_today - t[1] : sum_today - c[1]);
+        }
+
+
+    }
+    
+    remove("temp_entries.txt");
 }

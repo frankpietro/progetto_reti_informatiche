@@ -261,6 +261,10 @@ int main(int argc, char** argv){
                     continue;
                 }
 
+                tot_entr = -1;
+                peer_entr = -1;
+                sum_entr = -1;
+
                 //Riempio i buffer delle date nel caso non siano state inserite dall'utente
                 if(ret == 3){
                     strcpy(bound[0], "*");
@@ -274,6 +278,7 @@ int main(int argc, char** argv){
 
                 //TUTTA QUESTA PARTE SERVE SOLO SE ANCHE I DATI DEL GIORNO VANNO CALCOLATI
                 if(ret == 3 || strcmp(bound[1], "*") == 0){
+                    sum_entr = 0;
                     //Invio richiesta al server
                     ret = sprintf(get_buffer, "%s %c", "ENTR_REQ", type);
                     get_buffer[ret] = '\0';
@@ -353,7 +358,7 @@ int main(int argc, char** argv){
                 //Che abbia calcolato o no i dati del giorno, proseguo
 
                 //Se la data di inizio e' oggi, ho finito perche' veniva solo richiesto il totale di oggi
-                if(!is_today(bound[0]) || ret == 3){
+                if(!is_today(bound[0])){
                     char get_past_aggr[MAX_PAST_AGGR];
                     int aggr_entries;
 
@@ -372,7 +377,12 @@ int main(int argc, char** argv){
                         //Sfrutto stdin_buffer che e' della lunghezza giusta
                         recv_UDP(listener_socket, stdin_buff, 40, time_port, "AGGR_ENT", "AENT_ACK");
                         printf("Ricevuta stringa %s\n", stdin_buff+9);
+                        //Memorizzo le entrate in un buffer temporaneo
+                        insert_temp(stdin_buff+9);
                     }
+
+                    //Eseguo l'operazione di stampa finale
+                    print_results(aggr, type, sum_entr, bound[0], bound[1]);
 
                 }
 
@@ -486,8 +496,6 @@ int main(int argc, char** argv){
                 //Notifica chiusura server
                 if(strcmp(mess_type_buffer, "SRV_EXIT")==0){
                     printf("Il server sta per chiudere\n");
-
-                    //Fa qualcosa coi dati
 
                     //Invia ACK
                     ack_UDP(listener_socket, "S_XT_ACK", server_port, socket_buffer, strlen(socket_buffer));

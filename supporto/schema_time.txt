@@ -5,7 +5,8 @@ aspetta un messaggio per al massimo 10 minuti
 se lo riceve {
     se il messaggio proviene dal server {
         invia ack
-        si spegne
+        chiude il socket
+        esce
     }
     se il messaggio e' di richiesta dati aggregati per una get {
         invia ack

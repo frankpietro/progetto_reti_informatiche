@@ -17,3 +17,5 @@ int stop_lock();
 void register_daily_tot(char*);
 void print_daily_aggr(char*);
 int is_flag_up();
+void insert_temp(char*);
+void print_results(char,char,int,char*,char*);

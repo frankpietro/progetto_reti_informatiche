@@ -391,6 +391,8 @@ int main(int argc, char** argv){
                 connected_peers = 0;
                 //Cancello il file con la lista di peer
                 remove("./ds_dir/peer_addr.txt");
+                //Chiudo il time server
+                send_UDP(server_socket, "SRV_EXIT", MESS_TYPE_LEN, time_port, "S_XT_ACK");
 
                 close(server_socket);
                 _exit(0);

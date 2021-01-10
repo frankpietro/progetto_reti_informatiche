@@ -87,6 +87,7 @@ se informazioni da stdin {
             invio un messaggio di uscita
         }
         cancello file di peer
+        spengo il time server
         chiudo il socket
         esco
     }
